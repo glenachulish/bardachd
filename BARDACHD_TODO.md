@@ -1,63 +1,57 @@
 # Bàrdachd — TODO
 
-_The single current outstanding-work list. As of 17 Jun 2026 the app exists only
-in project knowledge: no repo, nothing on disk, nothing on the Pi. So this list
-is mostly "get to first deploy." Reorder/strike as things land._
+_The single current outstanding-work list. **Updated 17 Jun 2026** after the Pi
+deploy and the post-deploy feature work. The app is now LIVE at
+`https://ceol-pi.tail01672f.ts.net/bardachd/`. Most of the original "get to
+first deploy" list is done; what remains is small. Reorder/strike as things
+land._
 
-## Before anything else
-- [x] **Mac dev root confirmed:** `/Users/callummaclellan/Bardachd` (capital B,
-      matches the folder on disk). Pi clone dir stays lowercase `~/bardachd` to
-      match the service name and Òrain convention — intentional, don't "align".
+## DONE — local side (Session 01)
+- [x] Mac dev root confirmed: `/Users/callummaclellan/Bardachd`.
+- [x] Source saved to disk (`main.py`, `frontend.py`), `requirements.txt`,
+      `.gitignore` added.
+- [x] New GitHub repo created and pushed: `glenachulish/bardachd`, branch `main`.
+- [x] Prefix fix applied to `frontend.py` (JS prefix constant; works at `/` and
+      `/bardachd/`). Tested locally.
 
-## Get the source onto disk and into a repo
-- [x] Save the two project-knowledge files to disk under the dev root, renamed:
-      `prosody_main_py.txt` → `main.py`, `prosody_frontend_py.txt` → `frontend.py`.
-- [x] Add `requirements.txt` (`fastapi`, `uvicorn`, `pronouncing`) — referenced
-      by `PROSODY_README.md` but not yet in project knowledge.
-- [x] Add a `.gitignore`: `data/` (or just `poems.db`), `.venv/`, `.backups/`,
-      `__pycache__/`.
-- [x] Create the **new** GitHub repo (NOT glenachulish/Ceol). Record URL +
-      branch in `CLAUDE.md`'s "Key paths" section.
-- [x] Initial commit + push.
+## DONE — Pi deploy (Session 02)
+- [x] Confirmed port 8200 free; baseline of Funnel + listening ports captured.
+- [x] Cloned to `~/bardachd` on the Pi; venv; requirements installed.
+- [x] `bardachd.service` written and enabled (binds `127.0.0.1:8200`).
+- [x] Funnel path handler added (`--set-path=/bardachd`, additive — neighbours
+      untouched). Verified live; all neighbour apps confirmed healthy.
 
-## ⚠️ The prefix fix — do this BEFORE first deploy, not after
-- [x] Make `frontend.py` **prefix-aware** so it works under `…ts.net/bardachd/`.
-      Currently every fetch is a leading-slash absolute path (`/api/scan`,
-      `/api/forms`, `/api/rhymes/…`, `/api/poems`, `/api/exercises`,
-      `/api/poems/{id}/export`) — all of which 404 under the prefix. Fix: derive
-      a base prefix in JS from `window.location.pathname` and build every fetch
-      from it, OR set `<base href>` and switch all fetches to relative paths.
-      Backend stays unchanged (Tailscale strips the prefix). See `CLAUDE.md` and
-      `PI-INFRASTRUCTURE.md`.
-- [x] After the fix, test locally that the app still works at `/` too (so dev on
-      the Mac at `localhost:8200/` and prod at `/bardachd/` both work).
+## DONE — post-deploy features (Session 03)
+- [x] Renamed the app in the UI to **Bàrdachd** (title + brand).
+- [x] Added three reference tabs — **Further reading**, **Websites**, **Media** —
+      with curated, original-wording content and working links.
+- [x] Made those three tabs **user-editable**: add your own items (persisted in
+      `poems.db`, new `resources` table) and remove the ones you've added. The
+      curated defaults stay built-in and always shown; defaults aren't deletable.
+- [x] **PWA**: web manifest + service worker + SVG icons, all prefix-aware, so
+      the app installs to a phone/desktop home screen and opens offline.
+- [x] Updated `PI-INFRASTRUCTURE.md` (Bàrdachd row; corrected Nature/Skywards;
+      noted the dead Ceòl `/`→:8080 502).
+- [x] `.gitignore` tidy (`.DS_Store`, `bardachd_patch_*.py`) — files untracked.
+- [x] Drift-report habit set up: `drift-report.sh` (FLAT globs) +
+      `drift-compare.sh`, both tested; `DRIFT-STEP0-Bardachd.md` captured.
+- [x] Session logs written: `SESSION_01.md`, `SESSION_02.md`, `SESSION_03.md`.
 
-## Deploy to the Pi (follow PI-INFRASTRUCTURE.md)
-- [ ] Confirm nothing else on the Pi uses port **8200** (Ceòl :8001, Òrain
-      :8004, Shadowing :8003 are known; 8200 should be clear — verify).
-- [ ] Clone the repo to `~/bardachd` on the Pi; make a venv; `pip install -r
-      requirements.txt --break-system-packages` (or in the venv).
-- [ ] Create `/etc/systemd/system/bardachd.service` (model on the unit in
-      `PROSODY_README.md`, but service name `bardachd`, user/paths correct for
-      the Pi). `sudo systemctl enable --now bardachd`.
-- [ ] Add the Funnel path handler (additive — leaves Ceòl/Òrain untouched):
-      `sudo tailscale funnel --bg --https=443 --set-path=/bardachd http://127.0.0.1:8200`
-- [ ] Verify: curl `…/bardachd/api/forms` returns JSON; load `…/bardachd/` in a
-      browser and confirm scansion, rhyme, forms, exercises, save/export all work
-      over the Funnel (this is where a missed prefix bug shows up).
-- [ ] Immediately curl the OTHER apps' paths to confirm the 443 change didn't
-      disturb them.
+## Outstanding — small, at leisure
+- [ ] Browser-verify on the phone: open `…/bardachd/`, Add to Home Screen, and
+      confirm it launches full-screen with the Bàrdachd icon, scansion/rhyme/
+      forms/exercises/save-export work, and the add/remove buttons on the three
+      reference tabs work.
+- [ ] Remove any leftover test rows added during deploy verification (e.g. the
+      "Test" website) via the Remove button in the UI.
+- [ ] Drop `PI-INFRASTRUCTURE.md` and `DRIFT-STEP0-Bardachd.md` into the shared
+      cross-project docs folder (`~/pi-infrastructure/`-style) — they don't live
+      in this repo.
+- [ ] (Optional polish) The PWA icons are SVG. iOS home-screen icons are most
+      reliable as PNG; if the SVG apple-touch-icon ever looks off on your iPhone,
+      swap in a 180×180 and 512×512 PNG. Not needed unless you see a problem.
 
-## Housekeeping after first deploy
-- [ ] Add Bàrdachd's row to `PI-INFRASTRUCTURE.md`'s live-state table and target
-      architecture (a draft addition is ready — see that doc).
-- [ ] Set up the drift-report habit for this project (`DRIFT-REPORT-HABIT.md`):
-      generate a `drift-report.sh` with FLAT globs (`*.py`, not `backend/*.py`),
-      tracking `main.py`, `frontend.py`, and the status/notes docs. Use
-      `DRIFT-STEP0-TEMPLATE.md` to capture the answers.
-- [ ] Start `SESSION_01.md`.
-
-## Possible later (discussed for Prosody, not committed)
+## Possible later (discussed, not committed)
 - [ ] Per-line written-out target for the line being edited (e.g. `da-DUM
       da-DUM…`).
 - [ ] Stanza-grouping view (visually break a sonnet into quatrains + couplet).

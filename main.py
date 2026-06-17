@@ -16,7 +16,7 @@ from contextlib import contextmanager
 
 import pronouncing
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response, JSONResponse
 from pydantic import BaseModel
 
 DB_PATH = Path(__file__).parent / "poems.db"
@@ -759,6 +759,103 @@ def api_export_poem(pid: int):
 
 
 from frontend import HTML
+
+
+# --------------------------------------------------------------------------
+# PWA: manifest, service worker, and icon
+# --------------------------------------------------------------------------
+# All URLs here are RELATIVE so they resolve correctly whether the app is
+# served at "/" (local dev) or under "/bardachd/" (production behind the
+# Tailscale path prefix). The browser resolves "." and "icon.svg" against the
+# document/manifest location, so no absolute paths are baked in.
+
+MANIFEST = {
+    "name": "Bàrdachd — metre & rhyme",
+    "short_name": "Bàrdachd",
+    "description": "A workshop in metre and rhyme: scansion, rhyme, forms.",
+    "start_url": ".",
+    "scope": ".",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#f3efe3",
+    "theme_color": "#2f4a6b",
+    "icons": [
+        {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml",
+         "purpose": "any"},
+        {"src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml",
+         "purpose": "maskable"},
+    ],
+}
+
+# A simple, dependency-free icon: a "B" on the app's deep-blue ground, drawn in
+# the paper/terracotta palette. SVG scales to any launcher size.
+_ICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="96" fill="#2f4a6b"/>
+<text x="50%" y="52%" dy=".35em" text-anchor="middle"
+ font-family="Iowan Old Style,Palatino,Georgia,serif" font-size="300"
+ font-weight="600" fill="#f3efe3">B</text>
+<circle cx="256" cy="430" r="20" fill="#9a5b3b"/>
+</svg>"""
+
+# Maskable variant: same mark but with safe-zone padding so launchers that
+# crop to a circle/squircle don't clip the letter.
+_ICON_MASKABLE_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" fill="#2f4a6b"/>
+<text x="50%" y="50%" dy=".35em" text-anchor="middle"
+ font-family="Iowan Old Style,Palatino,Georgia,serif" font-size="230"
+ font-weight="600" fill="#f3efe3">B</text>
+</svg>"""
+
+# Service worker: caches the app shell so it opens offline and feels app-like.
+# Network-first for API calls (so data stays fresh), cache-first for the shell.
+_SW_JS = """const CACHE='bardachd-v1';
+const SHELL=['./','./manifest.webmanifest','./icon.svg'];
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(ks=>Promise.all(
+    ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',e=>{
+  const req=e.request;
+  if(req.method!=='GET'){return;}
+  const url=new URL(req.url);
+  // API calls: network-first, fall back to cache only if offline.
+  if(url.pathname.includes('/api/')){
+    e.respondWith(fetch(req).catch(()=>caches.match(req)));
+    return;
+  }
+  // Shell/assets: cache-first, update cache in the background.
+  e.respondWith(caches.match(req).then(hit=>hit||fetch(req).then(res=>{
+    const copy=res.clone();
+    caches.open(CACHE).then(c=>c.put(req,copy));
+    return res;
+  }).catch(()=>caches.match('./'))));
+});
+"""
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return JSONResponse(MANIFEST, media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    # Service workers must be served with a JS content type and no long cache.
+    return Response(_SW_JS, media_type="application/javascript",
+                    headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/icon.svg")
+def icon_svg():
+    return Response(_ICON_SVG, media_type="image/svg+xml")
+
+
+@app.get("/icon-maskable.svg")
+def icon_maskable_svg():
+    return Response(_ICON_MASKABLE_SVG, media_type="image/svg+xml")
 
 
 @app.get("/", response_class=HTMLResponse)

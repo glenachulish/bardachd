@@ -2,8 +2,16 @@ HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bàrdachd</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f4a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bàrdachd">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
 :root{
   --paper:#f3 efe3; --paper:#f3efe3; --ink:#1c2231; --ink-soft:#5a6072;
@@ -306,6 +314,15 @@ let currentId=null, scanTimer=null;
 // The regex strips any trailing filename (e.g. /bardachd/index.html) back to
 // its directory, so it works whether the URL ends in "/" or a page name.
 const API = location.pathname.replace(/[^/]*$/, '') || '/';
+
+// Register the service worker so the app installs and runs offline. Scope and
+// script path use the same prefix the API calls do, so this works at "/" and
+// under "/bardachd/" alike. Failure here is non-fatal — the app still runs.
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register(API+'sw.js',{scope:API}).catch(()=>{});
+  });
+}
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),1800);}

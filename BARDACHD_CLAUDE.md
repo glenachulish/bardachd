@@ -22,12 +22,17 @@ Mobile-friendly, served by the same Raspberry Pi over Tailscale, sibling to Ceò
 and Òrain. Callum is not a coder: Claude writes all code; Callum runs Terminal
 commands and deploys.
 
-## Status: NOT YET DEPLOYED
-As of 17 Jun 2026 the app exists **only in project knowledge** — there is no
-GitHub repo, nothing saved to disk on the Mac, and nothing running on the Pi.
-The first real session's job is to get the source onto disk and into a repo,
-make the one prefix-fix below, then deploy. Treat the systemd unit and run
-commands in `PROSODY_README.md` as the *intended* setup, not a live one.
+## Status: LIVE (deployed 17 Jun 2026)
+The app is deployed and running at
+`https://ceol-pi.tail01672f.ts.net/bardachd/`, under `bardachd.service`
+(enabled at boot) on internal port 8200, served at `/bardachd/` on the shared
+443 Funnel. Source on disk at the Mac dev root and in the repo (below); the
+prefix fix is applied. Since first deploy it has gained three editable reference
+tabs (Further reading / Websites / Media) and PWA install support — see
+`BARDACHD_PROJECT_NOTES.md` for how those work, and `BARDACHD_SESSION_02.md` /
+`SESSION_03.md` for the deploy and feature history. The systemd unit and run
+commands in `PROSODY_README.md` are now the *actual* setup (with one deviation:
+the service binds `127.0.0.1`, not `0.0.0.0`).
 
 ## Source truth — read this first
 - **Never trust snapshots or session notes over live code.** A fresh session
