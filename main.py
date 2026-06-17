@@ -393,6 +393,118 @@ EXERCISES = [
 
 
 # --------------------------------------------------------------------------
+# Further reading — books on prosody, metre and form (own descriptions)
+# --------------------------------------------------------------------------
+READING = [
+    {"title": "Poetic Meter and Poetic Form", "author": "Paul Fussell",
+     "kind": "Classic study",
+     "note": "The standard text on English metre and the fixed forms. Clear, "
+             "opinionated, and full of worked scansions — the obvious first "
+             "stop for understanding how feet and lines actually behave."},
+    {"title": "A Poetry Handbook", "author": "Mary Oliver",
+     "kind": "Practical guide",
+     "note": "A short, warm introduction to sound, line and metre from a poet "
+             "who teaches by ear. Good for building intuition before theory."},
+    {"title": "The Ode Less Travelled", "author": "Stephen Fry",
+     "kind": "Hands-on course",
+     "note": "A genial, exercise-driven walk through metre, rhyme and form. "
+             "Written for people who want to *write* in form, with drills much "
+             "like the ones in the Exercises tab."},
+    {"title": "Rhyme's Reason", "author": "John Hollander",
+     "kind": "Verse-form primer",
+     "note": "A famously compact guide that demonstrates each form in verse "
+             "that describes itself — the definition and the example are the "
+             "same lines. Delightful and genuinely instructive."},
+    {"title": "The Making of a Poem", "author": "Strand & Boland (eds.)",
+     "kind": "Form anthology",
+     "note": "An anthology arranged by form: sonnet, villanelle, sestina and "
+             "the rest, each with a short introduction and strong examples. "
+             "Useful for hearing a form done well, many times over."},
+    {"title": "All the Fun's in How You Say a Thing", "author": "Timothy Steele",
+     "kind": "Versification study",
+     "note": "A lucid, thorough account of how metre meets natural speech — "
+             "why a line scans as it does and how variation creates effect. "
+             "Pairs well with the strict-metre scoring this app uses."},
+    {"title": "Patterns of Poetry", "author": "Miller Williams",
+     "kind": "Form reference",
+     "note": "A compact, practical catalogue of traditional fixed forms with "
+             "examples — handy as a bench reference when you want to try one."},
+]
+
+
+# --------------------------------------------------------------------------
+# Useful websites (own descriptions)
+# --------------------------------------------------------------------------
+WEBSITES = [
+    {"name": "Poetry Foundation — Glossary of Poetic Terms",
+     "url": "https://www.poetryfoundation.org/learn/glossary-terms",
+     "note": "A searchable glossary of forms, metre and technique, each term "
+             "linked to real poems that use it. The best free reference for "
+             "the vocabulary behind scansion."},
+    {"name": "Poetry Foundation — Learn",
+     "url": "https://www.poetryfoundation.org/learn",
+     "note": "Essays, poem guides and reading material on craft and form, "
+             "alongside an enormous archive of poems to read aloud."},
+    {"name": "Academy of American Poets (poets.org)",
+     "url": "https://poets.org/glossary",
+     "note": "Glossary, form descriptions and a large poem archive. Its "
+             "'poetic forms' pages give concise definitions of the sonnet, "
+             "villanelle, ballad and more."},
+    {"name": "The Poetry Archive",
+     "url": "https://poetryarchive.org",
+     "note": "Recordings of poets reading their own work — the single best "
+             "way to train your ear for metre and line, since you hear where "
+             "the stresses really fall."},
+    {"name": "Representative Poetry Online (Univ. of Toronto)",
+     "url": "https://rpo.library.utoronto.ca",
+     "note": "A scholarly, public collection of poetry from Old English to "
+             "now, with a glossary and timeline. Good for tracing how a form "
+             "developed over centuries."},
+    {"name": "The Poetry Society (UK)",
+     "url": "https://poetrysociety.org.uk",
+     "note": "A UK home for poets: competitions, prompts, and resources, plus "
+             "the long-running Poetry Review."},
+]
+
+
+# --------------------------------------------------------------------------
+# Media — videos and podcasts (own descriptions)
+# --------------------------------------------------------------------------
+MEDIA = [
+    {"kind": "Podcast", "name": "Poetry Off the Shelf",
+     "by": "Poetry Foundation",
+     "url": "https://www.poetryfoundation.org/podcasts/off-the-shelf",
+     "note": "In-depth conversations on contemporary poetry and the writing "
+             "process — a window into how working poets think about craft."},
+    {"kind": "Podcast", "name": "The Slowdown",
+     "by": "Originally Tracy K. Smith / Major Jackson",
+     "url": "https://www.slowdownshow.org",
+     "note": "A short daily episode: one poem, read and briefly reflected on. "
+             "An easy habit for hearing a poem a day and feeling its rhythm."},
+    {"kind": "Podcast", "name": "Poetry Unbound",
+     "by": "Pádraig Ó Tuama (On Being)",
+     "url": "https://onbeing.org/series/poetry-unbound/",
+     "note": "Each short episode walks slowly through a single poem. Excellent "
+             "for learning to read closely and notice how line and sound work."},
+    {"kind": "Podcast", "name": "The Poetry Magazine Podcast",
+     "by": "Poetry Foundation",
+     "url": "https://www.poetryfoundation.org/podcasts/the-poetry-magazine-podcast",
+     "note": "Poets read and discuss their own work, giving an unguarded look "
+             "at choices of form, line and sound."},
+    {"kind": "Video", "name": "Poetry Foundation video archive",
+     "by": "Poetry Foundation",
+     "url": "https://www.poetryfoundation.org/videos",
+     "note": "Readings, interviews and short poetry documentaries — good for "
+             "watching poets perform their work and hearing the metre live."},
+    {"kind": "Video", "name": "The Poetry Archive (audio/video readings)",
+     "by": "Poetry Archive",
+     "url": "https://poetryarchive.org",
+     "note": "A vast collection of poets reading aloud. Listening alongside the "
+             "text on the page is the fastest way to train your ear for stress."},
+]
+
+
+# --------------------------------------------------------------------------
 # API models
 # --------------------------------------------------------------------------
 class ScanRequest(BaseModel):
@@ -481,6 +593,21 @@ def api_forms():
 @app.get("/api/exercises")
 def api_exercises():
     return EXERCISES
+
+
+@app.get("/api/reading")
+def api_reading():
+    return READING
+
+
+@app.get("/api/websites")
+def api_websites():
+    return WEBSITES
+
+
+@app.get("/api/media")
+def api_media():
+    return MEDIA
 
 
 @app.get("/api/poems")

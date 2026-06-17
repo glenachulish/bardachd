@@ -3,7 +3,7 @@ HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prosody</title>
+<title>Bàrdachd</title>
 <style>
 :root{
   --paper:#f3 efe3; --paper:#f3efe3; --ink:#1c2231; --ink-soft:#5a6072;
@@ -115,6 +115,19 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
   text-transform:uppercase;color:var(--accent-warm)}
 .ex h3{margin:3px 0 6px;font-size:18px}
 .ex p{margin:0;color:var(--ink-soft);font-size:15px}
+.reslist{display:grid;gap:14px}
+.res{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--accent-warm);
+  border-radius:3px;padding:16px 20px}
+.res .kind{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent-warm)}
+.res h3{margin:3px 0 2px;font-size:18px}
+.res h3 a{color:var(--accent);text-decoration:none}
+.res h3 a:hover{text-decoration:underline}
+.res .by{font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;color:var(--ink-soft);margin:0 0 6px}
+.res p{margin:0;color:var(--ink-soft);font-size:15px}
+.res .link{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;
+  word-break:break-all;margin-top:8px}
+.res .link a{color:var(--accent)}
 .poemlist{display:grid;gap:8px;margin-top:6px}
 .poemrow{display:flex;justify-content:space-between;align-items:center;
   background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:10px 16px}
@@ -132,7 +145,7 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="brand">Prosody<span class="sub">a workshop in metre &amp; rhyme</span></div>
+    <div class="brand">Bàrdachd<span class="sub">a workshop in metre &amp; rhyme</span></div>
   </header>
 
   <nav class="tabs">
@@ -140,6 +153,9 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
     <button data-tab="forms">Forms</button>
     <button data-tab="rhyme">Rhyme</button>
     <button data-tab="exercises">Exercises</button>
+    <button data-tab="reading">Further reading</button>
+    <button data-tab="websites">Websites</button>
+    <button data-tab="media">Media</button>
     <button data-tab="saved">Saved</button>
   </nav>
 
@@ -194,6 +210,27 @@ Shall I compare thee to a summer's day"></textarea>
     <h2>Guided exercises</h2>
     <p class="hint">Short drills that build the ear before the eye. Work them in order or dip in.</p>
     <div class="exlist" id="exlist"></div>
+  </section>
+
+  <!-- FURTHER READING -->
+  <section class="panel" id="reading">
+    <h2>Further reading</h2>
+    <p class="hint">Books on metre, rhyme and form — from quick practical guides to fuller studies. Pair any of them with the scansion tool: read a principle, then test it on a line.</p>
+    <div class="reslist" id="readinglist"></div>
+  </section>
+
+  <!-- WEBSITES -->
+  <section class="panel" id="websites">
+    <h2>Useful websites</h2>
+    <p class="hint">Free references and archives. Glossaries explain the terms; the reading and listening archives train the ear.</p>
+    <div class="reslist" id="websiteslist"></div>
+  </section>
+
+  <!-- MEDIA -->
+  <section class="panel" id="media">
+    <h2>Media</h2>
+    <p class="hint">Podcasts and videos. Hearing poems read aloud is the fastest way to feel where the stresses really fall.</p>
+    <div class="reslist" id="medialist"></div>
   </section>
 
   <!-- SAVED -->
@@ -380,7 +417,38 @@ async function loadExercises(){
     `<h3>${esc(e.title)}</h3><p>${esc(e.brief)}</p></div>`).join('');
 }
 
-loadForms();loadExercises();
+// ---- further reading ----
+async function loadReading(){
+  const r=await fetch(API+'api/reading');const items=await r.json();
+  $('#readinglist').innerHTML=items.map(b=>
+    `<div class="res"><div class="kind">${esc(b.kind)}</div>`+
+    `<h3>${esc(b.title)}</h3>`+
+    `<p class="by">${esc(b.author)}</p>`+
+    `<p>${esc(b.note)}</p></div>`).join('');
+}
+
+// ---- websites ----
+async function loadWebsites(){
+  const r=await fetch(API+'api/websites');const items=await r.json();
+  $('#websiteslist').innerHTML=items.map(w=>
+    `<div class="res"><div class="kind">Website</div>`+
+    `<h3><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.name)}</a></h3>`+
+    `<p>${esc(w.note)}</p>`+
+    `<p class="link"><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.url)}</a></p></div>`).join('');
+}
+
+// ---- media ----
+async function loadMedia(){
+  const r=await fetch(API+'api/media');const items=await r.json();
+  $('#medialist').innerHTML=items.map(m=>
+    `<div class="res"><div class="kind">${esc(m.kind)}</div>`+
+    `<h3><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a></h3>`+
+    `<p class="by">${esc(m.by)}</p>`+
+    `<p>${esc(m.note)}</p>`+
+    `<p class="link"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.url)}</a></p></div>`).join('');
+}
+
+loadForms();loadExercises();loadReading();loadWebsites();loadMedia();
 </script>
 </body>
 </html>"""
