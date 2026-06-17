@@ -1,0 +1,13 @@
+# Database / user data — never commit (created on first run)
+poems.db
+data/
+
+# Python virtual environment
+.venv/
+
+# Patch safety copies
+.backups/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
