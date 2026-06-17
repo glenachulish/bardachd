@@ -11,3 +11,7 @@ data/
 # Python bytecode cache
 __pycache__/
 *.pyc
+.DS_Store
+bardachd_patch_*.py
+.DS_Store
+bardachd_patch_*.py

@@ -50,6 +50,22 @@ def init_db():
                 updated TEXT NOT NULL DEFAULT (datetime('now'))
             )"""
         )
+        # User-added resources for the Further reading / Websites / Media tabs.
+        # The curated lists (READING / WEBSITES / MEDIA below) are built-in and
+        # always shown; rows here are the user's own additions, appended after
+        # the defaults and individually deletable.
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS resources (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                section TEXT NOT NULL,            -- 'reading' | 'websites' | 'media'
+                title TEXT NOT NULL DEFAULT '',   -- book title / site name / media name
+                detail TEXT NOT NULL DEFAULT '',  -- author (reading) / by (media); blank for websites
+                kind TEXT NOT NULL DEFAULT '',    -- e.g. 'Book', 'Podcast', 'Video'; free text
+                url TEXT NOT NULL DEFAULT '',     -- link (websites/media); optional for reading
+                note TEXT NOT NULL DEFAULT '',    -- why it's useful
+                created TEXT NOT NULL DEFAULT (datetime('now'))
+            )"""
+        )
 
 
 init_db()
@@ -518,6 +534,14 @@ class PoemIn(BaseModel):
     body: str = ""
 
 
+class ResourceIn(BaseModel):
+    title: str = ""      # book title / site name / media name
+    detail: str = ""     # author (reading) / by (media)
+    kind: str = ""       # e.g. Book / Podcast / Video (free text)
+    url: str = ""        # link
+    note: str = ""       # why it's useful
+
+
 # --------------------------------------------------------------------------
 # API routes
 # --------------------------------------------------------------------------
@@ -595,19 +619,87 @@ def api_exercises():
     return EXERCISES
 
 
+def _user_resources(section):
+    """User-added rows for a section, shaped to match the section's default
+    item keys so the frontend can render them identically. Each carries
+    builtin=False and an id so the UI can offer a delete button."""
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM resources WHERE section=? ORDER BY created ASC",
+            (section,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        if section == "reading":
+            item = {"title": d["title"], "author": d["detail"],
+                    "kind": d["kind"] or "Added", "note": d["note"]}
+            if d["url"]:
+                item["url"] = d["url"]
+        elif section == "websites":
+            item = {"name": d["title"], "url": d["url"], "note": d["note"]}
+        else:  # media
+            item = {"kind": d["kind"] or "Added", "name": d["title"],
+                    "by": d["detail"], "url": d["url"], "note": d["note"]}
+        item["id"] = d["id"]
+        item["builtin"] = False
+        out.append(item)
+    return out
+
+
+def _with_builtin_flag(items):
+    """Tag the curated defaults so the frontend knows they aren't deletable."""
+    out = []
+    for it in items:
+        c = dict(it)
+        c["builtin"] = True
+        out.append(c)
+    return out
+
+
 @app.get("/api/reading")
 def api_reading():
-    return READING
+    return _with_builtin_flag(READING) + _user_resources("reading")
 
 
 @app.get("/api/websites")
 def api_websites():
-    return WEBSITES
+    return _with_builtin_flag(WEBSITES) + _user_resources("websites")
 
 
 @app.get("/api/media")
 def api_media():
-    return MEDIA
+    return _with_builtin_flag(MEDIA) + _user_resources("media")
+
+
+_VALID_SECTIONS = {"reading", "websites", "media"}
+
+
+@app.post("/api/resources/{section}")
+def api_add_resource(section: str, r: "ResourceIn"):
+    if section not in _VALID_SECTIONS:
+        raise HTTPException(404, "Unknown section")
+    if not r.title.strip():
+        raise HTTPException(400, "Title/name is required")
+    with db() as conn:
+        cur = conn.execute(
+            """INSERT INTO resources (section,title,detail,kind,url,note)
+               VALUES (?,?,?,?,?,?)""",
+            (section, r.title.strip(), r.detail.strip(), r.kind.strip(),
+             r.url.strip(), r.note.strip()),
+        )
+        return {"id": cur.lastrowid}
+
+
+@app.delete("/api/resources/{section}/{rid}")
+def api_delete_resource(section: str, rid: int):
+    if section not in _VALID_SECTIONS:
+        raise HTTPException(404, "Unknown section")
+    with db() as conn:
+        conn.execute(
+            "DELETE FROM resources WHERE id=? AND section=?", (rid, section)
+        )
+    return {"ok": True}
 
 
 @app.get("/api/poems")

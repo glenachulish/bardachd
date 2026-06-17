@@ -128,6 +128,24 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 .res .link{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;
   word-break:break-all;margin-top:8px}
 .res .link a{color:var(--accent)}
+.res .added{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-left:8px}
+.res .del{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;
+  border:1px solid var(--rule);background:none;color:var(--accent-warm);
+  padding:3px 9px;border-radius:3px;cursor:pointer;margin-top:10px}
+.res .del:hover{background:var(--paper)}
+.addbox{margin-top:22px;border-top:1px dotted var(--rule);padding-top:14px}
+.addbox summary{font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;
+  letter-spacing:.04em;color:var(--accent);cursor:pointer;list-style:none}
+.addbox summary::-webkit-details-marker{display:none}
+.addbox summary:hover{color:var(--ink)}
+.addform{display:grid;gap:8px;margin-top:14px;max-width:520px}
+.addform input,.addform textarea{font-family:inherit;font-size:15px;
+  border:1px solid var(--rule);background:var(--card);padding:9px 11px;
+  border-radius:3px;color:var(--ink)}
+.addform input:focus,.addform textarea:focus{outline:none;border-color:var(--accent)}
+.addform textarea{min-height:64px;resize:vertical}
+.addform .btn{justify-self:start}
 .poemlist{display:grid;gap:8px;margin-top:6px}
 .poemrow{display:flex;justify-content:space-between;align-items:center;
   background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:10px 16px}
@@ -217,6 +235,17 @@ Shall I compare thee to a summer's day"></textarea>
     <h2>Further reading</h2>
     <p class="hint">Books on metre, rhyme and form — from quick practical guides to fuller studies. Pair any of them with the scansion tool: read a principle, then test it on a line.</p>
     <div class="reslist" id="readinglist"></div>
+    <details class="addbox">
+      <summary>+ Add a book</summary>
+      <div class="addform">
+        <input id="r_reading_title" placeholder="Title (required)">
+        <input id="r_reading_detail" placeholder="Author">
+        <input id="r_reading_kind" placeholder="Kind (e.g. Practical guide)">
+        <input id="r_reading_url" placeholder="Link (optional)">
+        <textarea id="r_reading_note" placeholder="A note on why it's useful"></textarea>
+        <button class="btn" onclick="addResource('reading')">Add to list</button>
+      </div>
+    </details>
   </section>
 
   <!-- WEBSITES -->
@@ -224,6 +253,15 @@ Shall I compare thee to a summer's day"></textarea>
     <h2>Useful websites</h2>
     <p class="hint">Free references and archives. Glossaries explain the terms; the reading and listening archives train the ear.</p>
     <div class="reslist" id="websiteslist"></div>
+    <details class="addbox">
+      <summary>+ Add a website</summary>
+      <div class="addform">
+        <input id="r_websites_title" placeholder="Site name (required)">
+        <input id="r_websites_url" placeholder="Link (e.g. https://…)">
+        <textarea id="r_websites_note" placeholder="A note on why it's useful"></textarea>
+        <button class="btn" onclick="addResource('websites')">Add to list</button>
+      </div>
+    </details>
   </section>
 
   <!-- MEDIA -->
@@ -231,6 +269,17 @@ Shall I compare thee to a summer's day"></textarea>
     <h2>Media</h2>
     <p class="hint">Podcasts and videos. Hearing poems read aloud is the fastest way to feel where the stresses really fall.</p>
     <div class="reslist" id="medialist"></div>
+    <details class="addbox">
+      <summary>+ Add a podcast or video</summary>
+      <div class="addform">
+        <input id="r_media_title" placeholder="Name (required)">
+        <input id="r_media_kind" placeholder="Kind (e.g. Podcast, Video)">
+        <input id="r_media_detail" placeholder="By / host / channel">
+        <input id="r_media_url" placeholder="Link (e.g. https://…)">
+        <textarea id="r_media_note" placeholder="A note on why it's useful"></textarea>
+        <button class="btn" onclick="addResource('media')">Add to list</button>
+      </div>
+    </details>
   </section>
 
   <!-- SAVED -->
@@ -417,14 +466,30 @@ async function loadExercises(){
     `<h3>${esc(e.title)}</h3><p>${esc(e.brief)}</p></div>`).join('');
 }
 
+// ---- resource helpers ----
+// A delete control, shown only on user-added (non-builtin) items.
+function delBtn(section,item){
+  return item.builtin ? '' :
+    `<div><span class="added">added</span></div>`+
+    `<button class="del" onclick="deleteResource('${section}',${item.id})">Remove</button>`;
+}
+function linkRow(url){
+  return url ? `<p class="link"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></p>` : '';
+}
+function titleLink(name,url){
+  return url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(name)}</a>` : esc(name);
+}
+
 // ---- further reading ----
 async function loadReading(){
   const r=await fetch(API+'api/reading');const items=await r.json();
   $('#readinglist').innerHTML=items.map(b=>
     `<div class="res"><div class="kind">${esc(b.kind)}</div>`+
-    `<h3>${esc(b.title)}</h3>`+
-    `<p class="by">${esc(b.author)}</p>`+
-    `<p>${esc(b.note)}</p></div>`).join('');
+    `<h3>${titleLink(b.title,b.url)}</h3>`+
+    `<p class="by">${esc(b.author||'')}</p>`+
+    `<p>${esc(b.note)}</p>`+
+    linkRow(b.url)+
+    delBtn('reading',b)+`</div>`).join('');
 }
 
 // ---- websites ----
@@ -432,9 +497,10 @@ async function loadWebsites(){
   const r=await fetch(API+'api/websites');const items=await r.json();
   $('#websiteslist').innerHTML=items.map(w=>
     `<div class="res"><div class="kind">Website</div>`+
-    `<h3><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.name)}</a></h3>`+
+    `<h3>${titleLink(w.name,w.url)}</h3>`+
     `<p>${esc(w.note)}</p>`+
-    `<p class="link"><a href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.url)}</a></p></div>`).join('');
+    linkRow(w.url)+
+    delBtn('websites',w)+`</div>`).join('');
 }
 
 // ---- media ----
@@ -442,10 +508,31 @@ async function loadMedia(){
   const r=await fetch(API+'api/media');const items=await r.json();
   $('#medialist').innerHTML=items.map(m=>
     `<div class="res"><div class="kind">${esc(m.kind)}</div>`+
-    `<h3><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.name)}</a></h3>`+
-    `<p class="by">${esc(m.by)}</p>`+
+    `<h3>${titleLink(m.name,m.url)}</h3>`+
+    `<p class="by">${esc(m.by||'')}</p>`+
     `<p>${esc(m.note)}</p>`+
-    `<p class="link"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.url)}</a></p></div>`).join('');
+    linkRow(m.url)+
+    delBtn('media',m)+`</div>`).join('');
+}
+
+// ---- add / delete a resource ----
+const RELOADERS={reading:loadReading,websites:loadWebsites,media:loadMedia};
+async function addResource(section){
+  const g=id=>{const el=$('#r_'+section+'_'+id);return el?el.value.trim():'';};
+  const payload={title:g('title'),detail:g('detail'),kind:g('kind'),
+                 url:g('url'),note:g('note')};
+  if(!payload.title){toast('A title or name is required');return;}
+  const r=await fetch(API+'api/resources/'+section,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok){toast('Could not add');return;}
+  ['title','detail','kind','url','note'].forEach(id=>{
+    const el=$('#r_'+section+'_'+id);if(el)el.value='';});
+  const box=$('#'+section+' .addbox');if(box)box.removeAttribute('open');
+  await RELOADERS[section]();toast('Added');
+}
+async function deleteResource(section,id){
+  await fetch(API+'api/resources/'+section+'/'+id,{method:'DELETE'});
+  await RELOADERS[section]();toast('Removed');
 }
 
 loadForms();loadExercises();loadReading();loadWebsites();loadMedia();
