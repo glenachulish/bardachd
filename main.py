@@ -375,6 +375,151 @@ FORMS = {
     },
 }
 
+
+# --------------------------------------------------------------------------
+# Form guidance (structure, craft tips, a starter prompt, per-line hints)
+# Own wording, generic public-domain prosody. Surfaced when a form is loaded.
+# `line_hints` is one short label per line, used to pre-fill the draft with
+# guide lines (rhyme letter + role) that the writer types over or clears.
+# --------------------------------------------------------------------------
+FORM_GUIDANCE = {
+    "sonnet-shakespearean": {
+        "structure": "14 lines: three quatrains (4+4+4) then a couplet (2).",
+        "tips": [
+            "Let each quatrain take one step of the thought; save the turn for "
+            "the final couplet.",
+            "Iambic pentameter is ten syllables, da-DUM ×5 — a gentle first-foot "
+            "inversion (DUM-da to open) is a classic, deliberate variation.",
+            "Lock the metre first, then reach for the rhyme; the rhyme finder "
+            "tab can help once your line-endings are chosen.",
+        ],
+        "starter": "Try opening on an image you want to argue with — 'They say "
+                   "that…' — and spend the quatrains testing it.",
+        "line_hints": ["A — quatrain 1", "B", "A", "B",
+                       "C — quatrain 2", "D", "C", "D",
+                       "E — quatrain 3", "F", "E", "F",
+                       "G — couplet (the turn)", "G"],
+    },
+    "sonnet-petrarchan": {
+        "structure": "14 lines: an octave (8) then a sestet (6), with a volta "
+                     "(turn) between them.",
+        "tips": [
+            "Use the octave to pose a problem or question; let the sestet "
+            "answer or complicate it after the volta.",
+            "The octave's tight ABBAABBA leans on just two rhymes — pick "
+            "sounds with plenty of partners (the rhyme finder helps).",
+            "The volta is a turn of thought, not just a new stanza — make line "
+            "9 feel like a door opening.",
+        ],
+        "starter": "Pose something unresolved in the octave — a longing, a "
+                   "doubt — and let line 9 turn toward it.",
+        "line_hints": ["A — octave", "B", "B", "A", "A", "B", "B", "A",
+                       "C — sestet (after the volta)", "D", "E", "C", "D", "E"],
+    },
+    "villanelle": {
+        "structure": "19 lines: five tercets (3 each) then a quatrain (4). Two "
+                     "refrains — call them A1 (line 1) and A2 (line 3) — return "
+                     "in turn and close the poem together.",
+        "tips": [
+            "Write the two refrains FIRST. They each repeat four times, so "
+            "they must be strong, slightly open lines that gather new meaning "
+            "on each return.",
+            "Refrain pattern: A1 closes tercets 2 and 4; A2 closes tercets 3 "
+            "and 5; both close the final quatrain (A1 then A2). The middle "
+            "line of every stanza rhymes on b.",
+            "Choose refrains that can shift in feeling without changing words — "
+            "a line that can be hopeful once and bitter later does the work.",
+            "Metre is usually iambic pentameter (da-DUM ×5). Keep the two "
+            "refrains exactly the same length so they sit cleanly each time.",
+        ],
+        "starter": "Draft one haunting, repeatable line for A1 (e.g. a line "
+                   "about holding on) and a second for A2 that answers it — "
+                   "everything else is built to carry those two back around.",
+        "line_hints": [
+            "A1 — REFRAIN 1 (write this first)", "b", "A2 — REFRAIN 2 (write this first)",
+            "a", "b", "A1 — refrain 1 returns",
+            "a", "b", "A2 — refrain 2 returns",
+            "a", "b", "A1 — refrain 1 returns",
+            "a", "b", "A2 — refrain 2 returns",
+            "a", "b", "A1 — refrain 1", "A2 — refrain 2",
+        ],
+    },
+    "ballad": {
+        "structure": "4-line stanza (repeat as many as you like): tetrameter, "
+                     "trimeter, tetrameter, trimeter.",
+        "tips": [
+            "The long/short alternation (8 beats, 6 beats) is the 'common "
+            "metre' of hymns and folk song — read it aloud and you'll feel the "
+            "swing.",
+            "Only lines 2 and 4 need to rhyme (ABCB); that looseness keeps a "
+            "narrative moving.",
+            "Ballads tell a story — let each stanza advance the action a step.",
+        ],
+        "starter": "Begin in the middle of an event — 'She rode out at the "
+                   "break of day' — and let the stanzas carry it forward.",
+        "line_hints": ["A — tetrameter (4 beats)", "B — trimeter (3 beats)",
+                       "C — tetrameter (4 beats)", "B — trimeter (3 beats)"],
+    },
+    "haiku": {
+        "structure": "3 lines: 5 / 7 / 5 syllables (English haiku often run "
+                     "shorter — aim for brevity over a strict count).",
+        "tips": [
+            "Pin the poem to a concrete, seasonal image rather than a "
+            "statement of feeling.",
+            "Aim for a 'cut' — a small turn or surprise between the images, "
+            "often after line 2.",
+            "No rhyme needed; the music is in the images and the pause.",
+        ],
+        "starter": "Name one precise thing you can see right now, then let the "
+                   "third line turn it somewhere unexpected.",
+        "line_hints": ["5 syllables", "7 syllables", "5 syllables"],
+    },
+    "limerick": {
+        "structure": "5 lines: long, long, short, short, long. Bouncing "
+                     "anapaests (da-da-DUM).",
+        "tips": [
+            "Lines 1, 2 and 5 share a rhyme (A) and run long; lines 3 and 4 "
+            "share a rhyme (B) and are a beat shorter.",
+            "The rhythm is da-da-DUM, da-da-DUM — read aloud to keep it "
+            "bouncing rather than forced.",
+            "Save the joke or twist for line 5; the short middle lines set it "
+            "up.",
+        ],
+        "starter": "Start with a person and a place that rhyme easily — 'There "
+                   "once was a … from …' — and build to a turn in line 5.",
+        "line_hints": ["A — long", "A — long", "B — short", "B — short",
+                       "A — long (the punchline)"],
+    },
+    "couplet-heroic": {
+        "structure": "2 lines, both iambic pentameter, rhyming AA. Chain many "
+                     "for longer verse.",
+        "tips": [
+            "Aim for a self-contained thought that closes cleanly on the "
+            "rhyme — the couplet should feel complete.",
+            "Both lines are ten syllables, da-DUM ×5.",
+            "A little wit or antithesis between the two lines gives the form "
+            "its snap.",
+        ],
+        "starter": "State a small truth in line 1 and twist or confirm it in "
+                   "line 2, landing on the rhyme.",
+        "line_hints": ["A — iambic pentameter", "A — iambic pentameter"],
+    },
+    "quatrain": {
+        "structure": "4 lines. Pick a rhyme scheme (ABAB, AABB or ABBA) and a "
+                     "metre, and keep both consistent.",
+        "tips": [
+            "Decide the rhyme scheme before you draft — it changes how the "
+            "lines lean on each other.",
+            "Hold one metre across all four lines so the stanza feels of a "
+            "piece.",
+            "A good quatrain often saves a small turn for the last line.",
+        ],
+        "starter": "Choose ABAB and a single image; let the fourth line turn "
+                   "or complete the thought.",
+        "line_hints": ["A", "B", "A", "B"],
+    },
+}
+
 # Guided exercises, structured by skill (own wording, generic prosody).
 EXERCISES = [
     {"id": "ear-1", "skill": "The ear",
@@ -611,7 +756,15 @@ def api_syllables(word: str):
 
 @app.get("/api/forms")
 def api_forms():
-    return FORMS
+    # Merge in guidance (structure, tips, starter prompt, per-line hints) so
+    # the editor can show it when a form is loaded. Existing fields unchanged.
+    out = {}
+    for k, v in FORMS.items():
+        item = dict(v)
+        if k in FORM_GUIDANCE:
+            item["guidance"] = FORM_GUIDANCE[k]
+        out[k] = item
+    return out
 
 
 @app.get("/api/exercises")
@@ -780,10 +933,14 @@ MANIFEST = {
     "background_color": "#f3efe3",
     "theme_color": "#2f4a6b",
     "icons": [
+        {"src": "icon-192.png", "sizes": "192x192", "type": "image/png",
+         "purpose": "any"},
+        {"src": "icon-512.png", "sizes": "512x512", "type": "image/png",
+         "purpose": "any"},
+        {"src": "icon-maskable-512.png", "sizes": "512x512",
+         "type": "image/png", "purpose": "maskable"},
         {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml",
          "purpose": "any"},
-        {"src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml",
-         "purpose": "maskable"},
     ],
 }
 
@@ -809,7 +966,7 @@ _ICON_MASKABLE_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
 # Service worker: caches the app shell so it opens offline and feels app-like.
 # Network-first for API calls (so data stays fresh), cache-first for the shell.
 _SW_JS = """const CACHE='bardachd-v1';
-const SHELL=['./','./manifest.webmanifest','./icon.svg'];
+const SHELL=['./','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
@@ -856,6 +1013,28 @@ def icon_svg():
 @app.get("/icon-maskable.svg")
 def icon_maskable_svg():
     return Response(_ICON_MASKABLE_SVG, media_type="image/svg+xml")
+
+
+# PNG icons (served from disk beside main.py). iOS Safari is unreliable with
+# SVG home-screen icons, so the apple-touch-icon and the manifest point at
+# these PNGs; the SVG remains as a scalable fallback for browsers that prefer
+# it. Files: icon-180.png, icon-192.png, icon-512.png, icon-maskable-512.png.
+_ICON_DIR = Path(__file__).parent
+_ALLOWED_PNG = {
+    "icon-180.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png",
+}
+
+
+@app.get("/{name}.png")
+def icon_png(name: str):
+    fn = f"{name}.png"
+    if fn not in _ALLOWED_PNG:
+        raise HTTPException(404, "Not found")
+    p = _ICON_DIR / fn
+    if not p.exists():
+        raise HTTPException(404, "Not found")
+    return Response(p.read_bytes(), media_type="image/png",
+                    headers={"Cache-Control": "max-age=86400"})
 
 
 @app.get("/", response_class=HTMLResponse)

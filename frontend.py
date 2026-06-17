@@ -11,7 +11,8 @@ HTML = r"""<!DOCTYPE html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bàrdachd">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <style>
 :root{
   --paper:#f3 efe3; --paper:#f3efe3; --ink:#1c2231; --ink-soft:#5a6072;
@@ -84,6 +85,18 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 .legend{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;
   color:var(--ink-soft);margin-bottom:14px}
 .legend .stress{color:var(--stress)} .legend .unstress{color:var(--unstress)}
+.guide{background:var(--card);border:1px solid var(--rule);
+  border-left:3px solid var(--accent-warm);border-radius:3px;
+  padding:14px 16px;margin-bottom:18px;font-family:ui-sans-serif,system-ui,sans-serif}
+.guide h3{font-family:inherit;font-size:16px;margin:0 0 6px;color:var(--ink)}
+.guide .gstruct{font-size:13px;color:var(--ink);margin:0 0 8px}
+.guide .gmeta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;
+  color:var(--ink-soft);margin-bottom:8px}
+.guide ul.gtips{margin:8px 0 0;padding-left:18px}
+.guide ul.gtips li{font-size:12.5px;color:var(--ink-soft);margin-bottom:5px;line-height:1.4}
+.guide .gstarter{font-size:12.5px;color:var(--ink);margin:10px 0 0;
+  padding:8px 10px;background:var(--paper);border-radius:3px}
+.guide .gclear{margin-top:12px;font-size:12px;padding:5px 11px}
 .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.04em;
   padding:2px 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
 .badge.good{background:#e3efe2;color:#2f6b3a}
@@ -202,6 +215,7 @@ Shall I compare thee to a summer's day"></textarea>
         </div>
       </div>
       <div>
+        <div class="guide" id="guide" style="display:none"></div>
         <div class="legend">Stress map &nbsp;
           <span class="stress">●</span> stressed &nbsp;
           <span class="unstress">●</span> unstressed
@@ -336,9 +350,20 @@ $$('nav.tabs button').forEach(b=>b.onclick=()=>{
 });
 
 // ---- scansion ----
+// Guide lines (form hints pre-filled into the draft) start with this marker.
+// They hold the line's position but are NOT part of the poem: stripped to a
+// blank line before scanning (so line→target alignment is preserved) and
+// before saving/exporting (so they never enter the stored poem).
+const GUIDE = '\u203a '; // "› " — a marker unlikely to start a real line
+function cleanDraft(text){
+  return text.split('\n').map(ln => ln.startsWith(GUIDE) ? '' : ln).join('\n');
+}
+function draftHasGuides(){return $('#draft').value.split('\n').some(l=>l.startsWith(GUIDE));}
+
 async function scan(){
-  const text=$('#draft').value;
-  if(!text.trim()){$('#scan').innerHTML='<p class="empty">Lines appear here as you type.</p>';return;}
+  const raw=$('#draft').value;
+  const text=cleanDraft(raw);
+  if(!text.trim()){$('#scan').innerHTML='<p class="empty">Lines appear here as you type. Guide lines (›) are ignored — type over them.</p>';return;}
   const r=await fetch(API+'api/scan',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text,form:$('#form').value})});
   const d=await r.json();
@@ -393,11 +418,11 @@ function renderLine(l){
 }
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 $('#draft').addEventListener('input',()=>{clearTimeout(scanTimer);scanTimer=setTimeout(scan,400);});
-$('#form').addEventListener('change',scan);
+$('#form').addEventListener('change',()=>{renderGuide($('#form').value);scan();});
 
 // ---- save / load / export ----
 function poemPayload(){return {title:$('#title').value||'Untitled',
-  form:$('#form').value, body:$('#draft').value};}
+  form:$('#form').value, body:cleanDraft($('#draft').value)};}
 $('#save').onclick=async()=>{
   const p=poemPayload();
   if(currentId){await fetch(API+'api/poems/'+currentId,{method:'PUT',
@@ -408,7 +433,7 @@ $('#save').onclick=async()=>{
   toast('Saved');
 };
 $('#newp').onclick=()=>{currentId=null;$('#title').value='Untitled';
-  $('#draft').value='';scan();toast('New poem');};
+  $('#draft').value='';renderGuide('free');scan();toast('New poem');};
 $('#export').onclick=async()=>{
   if(!currentId){toast('Save first');return;}
   const r=await fetch(API+'api/poems/'+currentId+'/export');const d=await r.json();
@@ -428,6 +453,7 @@ async function loadPoems(){
 async function openPoem(id){
   const r=await fetch(API+'api/poems/'+id);const p=await r.json();
   currentId=id;$('#title').value=p.title;$('#form').value=p.form;$('#draft').value=p.body;
+  renderGuide(p.form);
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
   $('nav.tabs button[data-tab=write]').classList.add('on');$('#write').classList.add('on');
@@ -436,10 +462,11 @@ async function openPoem(id){
 async function delPoem(id){await fetch(API+'api/poems/'+id,{method:'DELETE'});loadPoems();toast('Deleted');}
 
 // ---- forms ----
+let FORMS={};   // cached form data incl. guidance, keyed by form key
 async function loadForms(){
-  const r=await fetch(API+'api/forms');const f=await r.json();
+  const r=await fetch(API+'api/forms');FORMS=await r.json();
   const sel=$('#form');sel.innerHTML='<option value="free">Free verse</option>';
-  $('#formgrid').innerHTML=Object.entries(f).map(([k,v])=>{
+  $('#formgrid').innerHTML=Object.entries(FORMS).map(([k,v])=>{
     sel.innerHTML+=`<option value="${k}">${esc(v.name)}</option>`;
     const scheme=(v.rhyme_scheme&&v.rhyme_scheme.length)?
       `<dt>Rhyme map</dt><dd><div class="scheme">`+
@@ -449,17 +476,52 @@ async function loadForms(){
       `<dt>Metre</dt><dd>${esc(v.metre)}</dd>`+
       `<dt>Rhyme</dt><dd>${esc(v.rhyme)}</dd>${scheme}</dl>`+
       `<p class="note">${esc(v.note)}</p>`+
-      `<button class="btn usebtn" onclick="useForm('${k}',${JSON.stringify(v.lines)})">Load skeleton</button></div>`;
+      `<button class="btn usebtn" onclick="useForm('${k}')">Load skeleton</button></div>`;
   }).join('');
 }
-function useForm(key,lines){
+
+// Render the guide panel for a form key (or hide it for free verse / unknown).
+function renderGuide(key){
+  const box=$('#guide');
+  const v=FORMS[key];
+  if(!v||!v.guidance){box.style.display='none';box.innerHTML='';return;}
+  const g=v.guidance;
+  const tips=(g.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+  box.innerHTML=
+    `<h3>${esc(v.name)}</h3>`+
+    `<p class="gstruct">${esc(g.structure||'')}</p>`+
+    `<div class="gmeta"><span>Metre: ${esc(v.metre)}</span>`+
+    `<span>Rhyme: ${esc(v.rhyme)}</span></div>`+
+    (tips?`<ul class="gtips">${tips}</ul>`:'')+
+    (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
+    (v.guidance.line_hints?`<button class="btn ghost gclear" onclick="clearGuides()">Clear guide lines</button>`:'');
+  box.style.display='block';
+}
+
+function useForm(key){
+  const v=FORMS[key];if(!v){return;}
   $('#form').value=key;
-  $('#draft').value=Array(lines).fill('').map((_,i)=>'').join('\n');
+  // Pre-fill the draft with one guide line per line: the marker, the rhyme
+  // letter / role, so the box is never a cold blank. These are stripped from
+  // scansion and from the saved poem (see cleanDraft).
+  const hints=(v.guidance&&v.guidance.line_hints)||
+              Array(v.lines).fill('');
+  $('#draft').value=hints.map(h=>GUIDE+h).join('\n');
   currentId=null;$('#title').value='Untitled';
+  renderGuide(key);
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
   $('nav.tabs button[data-tab=write]').classList.add('on');$('#write').classList.add('on');
-  $('#draft').focus();toast('Form loaded — '+lines+' lines');
+  // place the cursor at the start of the first guide line
+  const ta=$('#draft');ta.focus();ta.setSelectionRange(0,0);
+  scan();toast('Form loaded — '+v.lines+' lines, with guidance');
+}
+
+// Remove all guide lines, leaving real content (and blank lines) in place.
+function clearGuides(){
+  const kept=$('#draft').value.split('\n')
+    .map(l=>l.startsWith(GUIDE)?'':l).join('\n');
+  $('#draft').value=kept;scan();toast('Guide lines cleared');
 }
 
 // ---- rhyme ----
