@@ -30,12 +30,13 @@ make the one prefix-fix below, then deploy. Treat the systemd unit and run
 commands in `PROSODY_README.md` as the *intended* setup, not a live one.
 
 ## Source truth — read this first
-- **Never trust snapshots or session notes over live code.** Once the repo
-  exists, a fresh session can clone the real branch inside its container:
-  `git clone --depth 1 --branch <BRANCH> <REPO_URL>`
-- Until the repo exists, the two `.txt` files in project knowledge
-  (`prosody_main_py.txt` = `main.py`, `prosody_frontend_py.txt` = `frontend.py`)
-  are the source of truth. They will be renamed to `.py` when saved to disk.
+- **Never trust snapshots or session notes over live code.** A fresh session
+  should clone the real branch inside its container and inspect that:
+  `git clone --depth 1 --branch main https://github.com/glenachulish/bardachd.git`
+- The repo is the source of truth. The `prosody_main_py.txt` /
+  `prosody_frontend_py.txt` files in project knowledge are the *original*
+  pre-deploy snapshot (now saved to disk as `main.py` / `frontend.py` with the
+  prefix fix applied) — treat them as history, not current code.
 - Project knowledge holds session notes, the TODO, and this file — NOT (long
   term) live source. Inspect code in the clone; test patches before delivery.
 - Invisible to a clone (gitignored): `data/` (the `poems.db` SQLite store),
@@ -87,8 +88,9 @@ Doing this now is cheap. Retrofitting later (the Ceòl story in
 ## Key paths & endpoints — confirmed where known, FILL IN the rest
 - Mac dev root: `/Users/callummaclellan/Bardachd` (capital B — matches the real
   folder on disk; note the Pi clone dir below is lowercase `bardachd`)
-- GitHub repo + branch: **TBC — create a NEW repo** (not glenachulish/Ceol).
-  Fill in URL + branch here the moment it exists.
+- GitHub repo + branch: `https://github.com/glenachulish/bardachd.git`, branch
+  `main`. Clone for a fresh session:
+  `git clone --depth 1 --branch main https://github.com/glenachulish/bardachd.git`
 - Pi service name: `bardachd` (unique — NOT `ceol`, NOT `prosody`)
 - Internal port: **8200** (confirmed from the code's run command; unique on the
   Pi — Ceòl :8001, Òrain :8004, Shadowing :8003, so :8200 is clear)

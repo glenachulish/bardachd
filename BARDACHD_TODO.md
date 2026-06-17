@@ -10,18 +10,18 @@ is mostly "get to first deploy." Reorder/strike as things land._
       match the service name and Òrain convention — intentional, don't "align".
 
 ## Get the source onto disk and into a repo
-- [ ] Save the two project-knowledge files to disk under the dev root, renamed:
+- [x] Save the two project-knowledge files to disk under the dev root, renamed:
       `prosody_main_py.txt` → `main.py`, `prosody_frontend_py.txt` → `frontend.py`.
-- [ ] Add `requirements.txt` (`fastapi`, `uvicorn`, `pronouncing`) — referenced
+- [x] Add `requirements.txt` (`fastapi`, `uvicorn`, `pronouncing`) — referenced
       by `PROSODY_README.md` but not yet in project knowledge.
-- [ ] Add a `.gitignore`: `data/` (or just `poems.db`), `.venv/`, `.backups/`,
+- [x] Add a `.gitignore`: `data/` (or just `poems.db`), `.venv/`, `.backups/`,
       `__pycache__/`.
-- [ ] Create the **new** GitHub repo (NOT glenachulish/Ceol). Record URL +
+- [x] Create the **new** GitHub repo (NOT glenachulish/Ceol). Record URL +
       branch in `CLAUDE.md`'s "Key paths" section.
-- [ ] Initial commit + push.
+- [x] Initial commit + push.
 
 ## ⚠️ The prefix fix — do this BEFORE first deploy, not after
-- [ ] Make `frontend.py` **prefix-aware** so it works under `…ts.net/bardachd/`.
+- [x] Make `frontend.py` **prefix-aware** so it works under `…ts.net/bardachd/`.
       Currently every fetch is a leading-slash absolute path (`/api/scan`,
       `/api/forms`, `/api/rhymes/…`, `/api/poems`, `/api/exercises`,
       `/api/poems/{id}/export`) — all of which 404 under the prefix. Fix: derive
@@ -29,7 +29,7 @@ is mostly "get to first deploy." Reorder/strike as things land._
       from it, OR set `<base href>` and switch all fetches to relative paths.
       Backend stays unchanged (Tailscale strips the prefix). See `CLAUDE.md` and
       `PI-INFRASTRUCTURE.md`.
-- [ ] After the fix, test locally that the app still works at `/` too (so dev on
+- [x] After the fix, test locally that the app still works at `/` too (so dev on
       the Mac at `localhost:8200/` and prod at `/bardachd/` both work).
 
 ## Deploy to the Pi (follow PI-INFRASTRUCTURE.md)
