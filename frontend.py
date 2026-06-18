@@ -201,7 +201,7 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
   <!-- WRITE -->
   <section class="panel on" id="write">
     <div class="titlerow">
-      <input id="title" placeholder="Title" value="Untitled">
+      <input id="title" placeholder="Untitled">
       <select id="form"></select>
     </div>
     <div class="editor">
@@ -212,6 +212,8 @@ Shall I compare thee to a summer's day"></textarea>
           <button class="btn" id="save">Save poem</button>
           <button class="btn ghost" id="newp">New</button>
           <button class="btn ghost" id="export">Export .txt</button>
+          <button class="btn ghost" id="exportpdf">Export PDF</button>
+          <button class="btn ghost" id="print">Print</button>
         </div>
       </div>
       <div>
@@ -432,7 +434,7 @@ $('#save').onclick=async()=>{
     currentId=(await r.json()).id;}
   toast('Saved');
 };
-$('#newp').onclick=()=>{currentId=null;$('#title').value='Untitled';
+$('#newp').onclick=()=>{currentId=null;$('#title').value='';
   $('#draft').value='';renderGuide('free');scan();toast('New poem');};
 $('#export').onclick=async()=>{
   if(!currentId){toast('Save first');return;}
@@ -441,6 +443,37 @@ $('#export').onclick=async()=>{
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=d.filename;a.click();
 };
+// ---- BARDACHD_PATCH_EXPORT_TITLE_v1: browser-native PDF + print ----
+// Builds a clean, print-styled document of the current poem (title +
+// body with guide markers stripped) in a new window. Print opens the OS
+// print dialog; Export PDF does the same — every OS offers 'Save as PDF'
+// there. No server dependency.
+function printablePoem(){
+  const title=($('#title').value||'Untitled');
+  const body=cleanDraft($('#draft').value).replace(/\n{3,}/g,'\n\n').trimEnd();
+  const formSel=$('#form'); const formName=formSel.options[formSel.selectedIndex]?formSel.options[formSel.selectedIndex].text:'';
+  const w=window.open('','_blank');
+  if(!w){toast('Allow pop-ups to print/PDF');return null;}
+  const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>`+
+    `<style>`+
+    `@page{margin:25mm}`+
+    `html,body{margin:0;padding:0}`+
+    `body{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;`+
+    `color:#1c2231;line-height:1.7;padding:24px}`+
+    `h1{font-size:26px;font-weight:600;margin:0 0 4px}`+
+    `.form{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;`+
+    `letter-spacing:.08em;text-transform:uppercase;color:#5a6072;margin:0 0 24px}`+
+    `pre{font-family:inherit;font-size:17px;line-height:1.9;white-space:pre-wrap;margin:0}`+
+    `</style></head><body>`+
+    `<h1>${esc(title)}</h1>`+
+    (formName&&formName!=='Free verse'?`<p class="form">${esc(formName)}</p>`:`<p class="form"></p>`)+
+    `<pre>${esc(body)}</pre>`+
+    `</body></html>`;
+  w.document.open();w.document.write(doc);w.document.close();
+  return w;
+}
+$('#print').onclick=()=>{const w=printablePoem();if(w){w.focus();setTimeout(()=>w.print(),250);}};
+$('#exportpdf').onclick=()=>{const w=printablePoem();if(w){w.focus();setTimeout(()=>w.print(),250);}toast('Choose "Save as PDF" in the dialog');};
 async function loadPoems(){
   const r=await fetch(API+'api/poems');const list=await r.json();
   $('#poemlist').innerHTML=list.length?list.map(p=>
@@ -507,7 +540,7 @@ function useForm(key){
   const hints=(v.guidance&&v.guidance.line_hints)||
               Array(v.lines).fill('');
   $('#draft').value=hints.map(h=>GUIDE+h).join('\n');
-  currentId=null;$('#title').value='Untitled';
+  currentId=null;$('#title').value='';
   renderGuide(key);
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
