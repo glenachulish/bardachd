@@ -300,6 +300,12 @@ def target_lines(form_key):
         "limerick": [anap3, anap3, anap2, anap2, anap3],
         "couplet-heroic": [iamb5, iamb5],
         "quatrain": [iamb4, iamb4, iamb4, iamb4],
+        # ADDFORMS_2026 — iambic-pentameter forms added below
+        "ottava-rima": [iamb5] * 8,
+        "rhyme-royal": [iamb5] * 7,
+        "blank-verse": [iamb5] * 10,  # unrhymed iambic pentameter; 10 is a
+                                       # starter length, not a fixed limit
+        # sestina has no fixed metre (defined by end-words), so no target here
     }
     return maps.get(form_key)
 
@@ -372,6 +378,45 @@ FORMS = {
         "rhyme": "ABAB / AABB / ABBA",
         "rhyme_scheme": list("ABAB"),
         "note": "The workhorse stanza. Pick a rhyme scheme and a consistent metre.",
+    },
+    # ADDFORMS_2026 — four forms added from the essential-forms list
+    "ottava-rima": {
+        "name": "Ottava Rima",
+        "lines": 8,
+        "metre": "iambic pentameter",
+        "rhyme": "ABABABCC",
+        "rhyme_scheme": list("ABABABCC"),
+        "note": "An eight-line stanza: six interlocking lines then a clinching "
+                "couplet. Long used for narrative, and a fine vehicle for wit.",
+    },
+    "rhyme-royal": {
+        "name": "Rhyme Royal",
+        "lines": 7,
+        "metre": "iambic pentameter",
+        "rhyme": "ABABBCC",
+        "rhyme_scheme": list("ABABBCC"),
+        "note": "A seven-line stanza with a hinge: the b-rhyme of line 5 looks "
+                "back, the couplet then closes. Stately, good for storytelling.",
+    },
+    "blank-verse": {
+        "name": "Blank Verse",
+        "lines": 10,
+        "metre": "iambic pentameter",
+        "rhyme": "none (unrhymed)",
+        "rhyme_scheme": [],
+        "note": "Unrhymed iambic pentameter — the metre of much verse drama. "
+                "No rhyme and no fixed length; the ten lines here are a starting "
+                "point. Not to be confused with free verse, which drops the metre too.",
+    },
+    "sestina": {
+        "name": "Sestina",
+        "lines": 39,
+        "metre": "no fixed metre",
+        "rhyme": "none — six repeated end-words, not rhymes",
+        "rhyme_scheme": [],
+        "note": "Six six-line stanzas and a closing three-line envoi. Six "
+                "end-words rotate through a fixed order (6-1-5-2-4-3) each "
+                "stanza; the envoi gathers all six. No rhyme, no set metre.",
     },
 }
 
@@ -517,6 +562,84 @@ FORM_GUIDANCE = {
         "starter": "Choose ABAB and a single image; let the fourth line turn "
                    "or complete the thought.",
         "line_hints": ["A", "B", "A", "B"],
+    },
+    # ADDFORMS_2026 — guidance for the four new forms
+    "ottava-rima": {
+        "structure": "An 8-line stanza: six lines rhyming ABABAB, then a "
+                     "couplet CC. All iambic pentameter.",
+        "tips": [
+            "Let the six alternating lines build the thought, then use the "
+            "closing couplet to land it — often with a turn or a wry sting.",
+            "Three pairs of A/B rhymes is a lot of repetition — choose sounds "
+            "with plenty of partners (the rhyme finder helps).",
+            "Every line is ten syllables, da-DUM ×5; keep the couplet as tight "
+            "as the rest so it snaps shut.",
+        ],
+        "starter": "Open a small narrative or argument in the ABABAB lines and "
+                   "let the couplet comment on it.",
+        "line_hints": ["A — iambic pentameter", "B", "A", "B", "A", "B",
+                       "C — couplet (the clincher)", "C"],
+    },
+    "rhyme-royal": {
+        "structure": "A 7-line stanza in iambic pentameter, rhyming ABABBCC.",
+        "tips": [
+            "The shared b-rhyme on lines 4 and 5 is the hinge — it links the "
+            "opening quatrain to the closing couplet.",
+            "Use the final couplet (CC) to resolve or turn the stanza.",
+            "Every line is ten syllables, da-DUM ×5.",
+        ],
+        "starter": "Set something going in the first four lines, pivot on the "
+                   "b-rhyme, and close on the couplet.",
+        "line_hints": ["A — iambic pentameter", "B", "A", "B",
+                       "B — the hinge", "C — couplet", "C"],
+    },
+    "blank-verse": {
+        "structure": "Unrhymed iambic pentameter. No rhyme, no fixed length — "
+                     "ten lines here are just a starting point; add or remove "
+                     "as the poem needs.",
+        "tips": [
+            "Every line is ten syllables, da-DUM ×5 — the overlay checks the "
+            "metre; there is nothing to rhyme.",
+            "Because there's no rhyme to lean on, let the metre and the "
+            "line-endings (enjambment) do the shaping.",
+            "Don't confuse it with free verse: blank verse keeps the strict "
+            "iambic beat.",
+        ],
+        "starter": "Speak plainly in a steady five-beat line — blank verse is "
+                   "closest to natural English speech; follow a thought across "
+                   "several lines.",
+        "line_hints": ["iambic pentameter", "iambic pentameter",
+                       "iambic pentameter", "iambic pentameter",
+                       "iambic pentameter", "iambic pentameter",
+                       "iambic pentameter", "iambic pentameter",
+                       "iambic pentameter", "iambic pentameter"],
+    },
+    "sestina": {
+        "structure": "Six 6-line stanzas then a 3-line envoi (39 lines). The "
+                     "six end-words of stanza 1 return as the end-words of "
+                     "every stanza, in a fixed rotating order; the envoi uses "
+                     "all six.",
+        "tips": [
+            "Choose your six end-words first, and choose them well — they "
+            "carry the whole poem and should be words that can shift in sense "
+            "(e.g. 'light', 'turn', 'fall').",
+            "The rotation is 6-1-5-2-4-3: each stanza takes the previous "
+            "stanza's end-words in that order. The guide lines below number "
+            "the end-word (1–6) for every line so you can see the pattern.",
+            "There is no rhyme and no fixed metre — the discipline is entirely "
+            "in the repeating words. The envoi packs two end-words into each "
+            "of its three lines.",
+        ],
+        "starter": "Pick six everyday but flexible nouns, set them as the "
+                   "end-words of the first stanza, then let the rotation pull "
+                   "the poem somewhere you didn't plan.",
+        "line_hints": ["end-word 1 (stanza 1)", "end-word 2", "end-word 3", "end-word 4", "end-word 5", "end-word 6",
+                       "end-word 6 (stanza 2)", "end-word 1", "end-word 5", "end-word 2", "end-word 4", "end-word 3",
+                       "end-word 3 (stanza 3)", "end-word 6", "end-word 4", "end-word 1", "end-word 2", "end-word 5",
+                       "end-word 5 (stanza 4)", "end-word 3", "end-word 2", "end-word 6", "end-word 1", "end-word 4",
+                       "end-word 4 (stanza 5)", "end-word 5", "end-word 1", "end-word 3", "end-word 6", "end-word 2",
+                       "end-word 2 (stanza 6)", "end-word 4", "end-word 6", "end-word 5", "end-word 3", "end-word 1",
+                       "envoi: ends on 5 (2 mid-line)", "envoi: ends on 3 (4 mid-line)", "envoi: ends on 1 (6 mid-line)"],
     },
 }
 
