@@ -211,6 +211,7 @@ Shall I compare thee to a summer's day"></textarea>
         <div class="toolbar">
           <button class="btn" id="save">Save poem</button>
           <button class="btn ghost" id="newp">New</button>
+          <button class="btn ghost" id="guidancetoggle">Clear guidance</button>
           <button class="btn ghost" id="export">Export .txt</button>
           <button class="btn ghost" id="exportpdf">Export PDF</button>
           <button class="btn ghost" id="print">Print</button>
@@ -361,6 +362,47 @@ function cleanDraft(text){
   return text.split('\n').map(ln => ln.startsWith(GUIDE) ? '' : ln).join('\n');
 }
 function draftHasGuides(){return $('#draft').value.split('\n').some(l=>l.startsWith(GUIDE));}
+// ---- BARDACHD_PATCH_GUIDANCE_TOGGLE_v1: guidance as a single toggle ----
+// guidanceOn is the one source of truth: when true the panel shows and
+// the `›` guide-line skeleton stays in the draft; save/print/export all
+// follow it. stashedGuides keeps the most recent skeleton so 'Show'
+// can restore guide lines onto still-blank lines without clobbering
+// anything you've actually written.
+let guidanceOn = true;
+let stashedGuides = [];   // array of {i, text} for stripped guide lines
+function syncGuidanceBtn(){
+  const b=$('#guidancetoggle'); if(!b) return;
+  b.textContent = guidanceOn ? 'Clear guidance' : 'Show guidance';
+}
+// Strip guide lines out of the draft, remembering them so we can restore.
+function stripGuideLines(){
+  const lines=$('#draft').value.split('\n');
+  stashedGuides=[];
+  const kept=lines.map((l,i)=>{
+    if(l.startsWith(GUIDE)){ stashedGuides.push({i, text:l}); return ''; }
+    return l;
+  });
+  $('#draft').value=kept.join('\n');
+}
+// Put guide lines back, but only onto lines that are still blank, so a
+// line you wrote over is never overwritten.
+function restoreGuideLines(){
+  if(!stashedGuides.length) return;
+  const lines=$('#draft').value.split('\n');
+  stashedGuides.forEach(({i,text})=>{
+    if(i<lines.length){ if(lines[i].trim()==='') lines[i]=text; }
+    else { while(lines.length<i) lines.push(''); lines.push(text); }
+  });
+  $('#draft').value=lines.join('\n');
+  stashedGuides=[];
+}
+function setGuidance(on){
+  guidanceOn = on;
+  if(on){ restoreGuideLines(); renderGuide($('#form').value); }
+  else  { stripGuideLines(); $('#guide').style.display='none'; }
+  syncGuidanceBtn(); scan();
+}
+$('#guidancetoggle').onclick=()=>setGuidance(!guidanceOn);
 
 async function scan(){
   const raw=$('#draft').value;
@@ -424,7 +466,10 @@ $('#form').addEventListener('change',()=>{renderGuide($('#form').value);scan();}
 
 // ---- save / load / export ----
 function poemPayload(){return {title:$('#title').value||'Untitled',
-  form:$('#form').value, body:cleanDraft($('#draft').value)};}
+  // Guidance on → store the draft as-is (guide lines persist for the
+  // next session); off → store the cleaned poem (final copy).
+  form:$('#form').value,
+  body:(guidanceOn ? $('#draft').value : cleanDraft($('#draft').value))};}
 $('#save').onclick=async()=>{
   const p=poemPayload();
   if(currentId){await fetch(API+'api/poems/'+currentId,{method:'PUT',
@@ -435,13 +480,25 @@ $('#save').onclick=async()=>{
   toast('Saved');
 };
 $('#newp').onclick=()=>{currentId=null;$('#title').value='';
-  $('#draft').value='';renderGuide('free');scan();toast('New poem');};
+  $('#draft').value='';guidanceOn=true;stashedGuides=[];syncGuidanceBtn();renderGuide('free');scan();toast('New poem');};
 $('#export').onclick=async()=>{
   if(!currentId){toast('Save first');return;}
-  const r=await fetch(API+'api/poems/'+currentId+'/export');const d=await r.json();
-  const blob=new Blob([d.content],{type:'text/plain'});
+  // Guidance off → use the server's cleaned export. Guidance on → build
+  // a .txt from the current draft so the guide lines are included.
+  let content, filename;
+  if(guidanceOn){
+    const title=($('#title').value||'Untitled');
+    const raw=$('#draft').value.split('\n')
+      .map(l=>l.startsWith(GUIDE)?('· '+l.slice(GUIDE.length)):l).join('\n');
+    content=`${title}\n${'='.repeat(title.length)}\n\n${raw}\n`;
+    filename=`${title}.txt`;
+  } else {
+    const r=await fetch(API+'api/poems/'+currentId+'/export');const d=await r.json();
+    content=d.content; filename=d.filename;
+  }
+  const blob=new Blob([content],{type:'text/plain'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=d.filename;a.click();
+  a.download=filename;a.click();
 };
 // ---- BARDACHD_PATCH_EXPORT_TITLE_v1: browser-native PDF + print ----
 // Builds a clean, print-styled document of the current poem (title +
@@ -450,8 +507,30 @@ $('#export').onclick=async()=>{
 // there. No server dependency.
 function printablePoem(){
   const title=($('#title').value||'Untitled');
-  const body=cleanDraft($('#draft').value).replace(/\n{3,}/g,'\n\n').trimEnd();
+  // WYSIWYG: when guidance is on, keep the guide-line labels (marker
+  // shown as a faint bullet) and append a guidance-notes block; when
+  // off, the clean poem only.
+  const raw=$('#draft').value;
+  let body;
+  if(guidanceOn){
+    body=raw.split('\n').map(l=>l.startsWith(GUIDE)?('· '+l.slice(GUIDE.length)):l)
+      .join('\n').replace(/\n{3,}/g,'\n\n').trimEnd();
+  } else {
+    body=cleanDraft(raw).replace(/\n{3,}/g,'\n\n').trimEnd();
+  }
   const formSel=$('#form'); const formName=formSel.options[formSel.selectedIndex]?formSel.options[formSel.selectedIndex].text:'';
+  const formKey=formSel.value; const v=FORMS[formKey];
+  let guideBlock='';
+  if(guidanceOn && v && v.guidance){
+    const g=v.guidance;
+    const tips=(g.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+    guideBlock=`<div class="guidance"><h2>Guidance — ${esc(v.name)}</h2>`+
+      (g.structure?`<p>${esc(g.structure)}</p>`:'')+
+      `<p class="gm">Metre: ${esc(v.metre)} · Rhyme: ${esc(v.rhyme)}</p>`+
+      (tips?`<ul>${tips}</ul>`:'')+
+      (g.starter?`<p><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
+      `</div>`;
+  }
   const w=window.open('','_blank');
   if(!w){toast('Allow pop-ups to print/PDF');return null;}
   const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title>`+
@@ -464,10 +543,18 @@ function printablePoem(){
     `.form{font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;`+
     `letter-spacing:.08em;text-transform:uppercase;color:#5a6072;margin:0 0 24px}`+
     `pre{font-family:inherit;font-size:17px;line-height:1.9;white-space:pre-wrap;margin:0}`+
+    `.guidance{margin-top:28px;padding-top:16px;border-top:1px solid #d8cfbd;`+
+    `font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;color:#5a6072;`+
+    `page-break-inside:avoid}`+
+    `.guidance h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;`+
+    `color:#5a6072;margin:0 0 8px}`+
+    `.guidance .gm{margin:6px 0}`+
+    `.guidance ul{margin:6px 0 6px 18px;padding:0}`+
     `</style></head><body>`+
     `<h1>${esc(title)}</h1>`+
     (formName&&formName!=='Free verse'?`<p class="form">${esc(formName)}</p>`:`<p class="form"></p>`)+
     `<pre>${esc(body)}</pre>`+
+    guideBlock+
     `</body></html>`;
   w.document.open();w.document.write(doc);w.document.close();
   return w;
@@ -486,7 +573,12 @@ async function loadPoems(){
 async function openPoem(id){
   const r=await fetch(API+'api/poems/'+id);const p=await r.json();
   currentId=id;$('#title').value=p.title;$('#form').value=p.form;$('#draft').value=p.body;
-  renderGuide(p.form);
+  // Reopen in the state it was saved: guidance on iff the body
+  // still carries `›` guide lines.
+  guidanceOn = draftHasGuides(); stashedGuides=[];
+  if(guidanceOn){ renderGuide(p.form); }
+  else { $('#guide').style.display='none'; }
+  syncGuidanceBtn();
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
   $('nav.tabs button[data-tab=write]').classList.add('on');$('#write').classList.add('on');
@@ -527,7 +619,7 @@ function renderGuide(key){
     `<span>Rhyme: ${esc(v.rhyme)}</span></div>`+
     (tips?`<ul class="gtips">${tips}</ul>`:'')+
     (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
-    (v.guidance.line_hints?`<button class="btn ghost gclear" onclick="clearGuides()">Clear guide lines</button>`:'');
+    (v.guidance.line_hints?`<button class="btn ghost gclear" onclick="setGuidance(false)">Clear guide lines</button>`:'');
   box.style.display='block';
 }
 
@@ -541,6 +633,7 @@ function useForm(key){
               Array(v.lines).fill('');
   $('#draft').value=hints.map(h=>GUIDE+h).join('\n');
   currentId=null;$('#title').value='';
+  guidanceOn=true;stashedGuides=[];syncGuidanceBtn();
   renderGuide(key);
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
