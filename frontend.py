@@ -97,6 +97,10 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 .guide .gstarter{font-size:12.5px;color:var(--ink);margin:10px 0 0;
   padding:8px 10px;background:var(--paper);border-radius:3px}
 .guide .gclear{margin-top:12px;font-size:12px;padding:5px 11px}
+/* BARDACHD_PATCH_HINTS_IN_PANEL_v1 */
+.guide ol.ghints{margin:10px 0 0;padding-left:22px;font-size:12.5px;color:var(--ink-soft)}
+.guide ol.ghints li{margin-bottom:4px;line-height:1.4}
+.guide .ghints-h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 0}
 .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.04em;
   padding:2px 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
 .badge.good{background:#e3efe2;color:#2f6b3a}
@@ -398,9 +402,11 @@ function restoreGuideLines(){
 }
 function setGuidance(on){
   guidanceOn = on;
-  if(on){ restoreGuideLines(); renderGuide($('#form').value); }
-  else  { stripGuideLines(); $('#guide').style.display='none'; }
-  syncGuidanceBtn(); scan();
+  // Per-line hints now live in the panel, so the toggle simply shows or
+  // hides the panel. No in-text guide lines to strip/restore anymore.
+  if(on){ renderGuide($('#form').value); }
+  else  { $('#guide').style.display='none'; }
+  syncGuidanceBtn();
 }
 $('#guidancetoggle').onclick=()=>setGuidance(!guidanceOn);
 
@@ -466,10 +472,9 @@ $('#form').addEventListener('change',()=>{renderGuide($('#form').value);scan();}
 
 // ---- save / load / export ----
 function poemPayload(){return {title:$('#title').value||'Untitled',
-  // Guidance on → store the draft as-is (guide lines persist for the
-  // next session); off → store the cleaned poem (final copy).
-  form:$('#form').value,
-  body:(guidanceOn ? $('#draft').value : cleanDraft($('#draft').value))};}
+  // The editor only ever holds the poem; cleanDraft is a safety net for
+  // any legacy `›` lines. The saved body is always clean.
+  form:$('#form').value, body:cleanDraft($('#draft').value)};}
 $('#save').onclick=async()=>{
   const p=poemPayload();
   if(currentId){await fetch(API+'api/poems/'+currentId,{method:'PUT',
@@ -480,22 +485,15 @@ $('#save').onclick=async()=>{
   toast('Saved');
 };
 $('#newp').onclick=()=>{currentId=null;$('#title').value='';
-  $('#draft').value='';guidanceOn=true;stashedGuides=[];syncGuidanceBtn();renderGuide('free');scan();toast('New poem');};
+  $('#draft').value='';guidanceOn=false;syncGuidanceBtn();renderGuide('free');scan();toast('New poem');};
 $('#export').onclick=async()=>{
   if(!currentId){toast('Save first');return;}
   // Guidance off → use the server's cleaned export. Guidance on → build
   // a .txt from the current draft so the guide lines are included.
   let content, filename;
-  if(guidanceOn){
-    const title=($('#title').value||'Untitled');
-    const raw=$('#draft').value.split('\n')
-      .map(l=>l.startsWith(GUIDE)?('· '+l.slice(GUIDE.length)):l).join('\n');
-    content=`${title}\n${'='.repeat(title.length)}\n\n${raw}\n`;
-    filename=`${title}.txt`;
-  } else {
-    const r=await fetch(API+'api/poems/'+currentId+'/export');const d=await r.json();
-    content=d.content; filename=d.filename;
-  }
+  // Body is the real poem now (cleanDraft strips any legacy `›` lines).
+  const r=await fetch(API+'api/poems/'+currentId+'/export');const d=await r.json();
+  content=d.content; filename=d.filename;
   const blob=new Blob([content],{type:'text/plain'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=filename;a.click();
@@ -510,25 +508,24 @@ function printablePoem(){
   // WYSIWYG: when guidance is on, keep the guide-line labels (marker
   // shown as a faint bullet) and append a guidance-notes block; when
   // off, the clean poem only.
-  const raw=$('#draft').value;
-  let body;
-  if(guidanceOn){
-    body=raw.split('\n').map(l=>l.startsWith(GUIDE)?('· '+l.slice(GUIDE.length)):l)
-      .join('\n').replace(/\n{3,}/g,'\n\n').trimEnd();
-  } else {
-    body=cleanDraft(raw).replace(/\n{3,}/g,'\n\n').trimEnd();
-  }
+  // The editor holds only the poem now; cleanDraft is a safety net for
+  // any legacy body that still contains `›` lines.
+  const body=cleanDraft($('#draft').value).replace(/\n{3,}/g,'\n\n').trimEnd();
   const formSel=$('#form'); const formName=formSel.options[formSel.selectedIndex]?formSel.options[formSel.selectedIndex].text:'';
   const formKey=formSel.value; const v=FORMS[formKey];
   let guideBlock='';
   if(guidanceOn && v && v.guidance){
     const g=v.guidance;
     const tips=(g.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+    const phints=(g.line_hints&&g.line_hints.length)
+      ? `<p class="gm"><b>Per line:</b></p><ol>`+g.line_hints.map(h=>`<li>${esc(h)}</li>`).join('')+`</ol>`
+      : '';
     guideBlock=`<div class="guidance"><h2>Guidance — ${esc(v.name)}</h2>`+
       (g.structure?`<p>${esc(g.structure)}</p>`:'')+
       `<p class="gm">Metre: ${esc(v.metre)} · Rhyme: ${esc(v.rhyme)}</p>`+
       (tips?`<ul>${tips}</ul>`:'')+
       (g.starter?`<p><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
+      phints+
       `</div>`;
   }
   const w=window.open('','_blank');
@@ -572,10 +569,13 @@ async function loadPoems(){
 }
 async function openPoem(id){
   const r=await fetch(API+'api/poems/'+id);const p=await r.json();
-  currentId=id;$('#title').value=p.title;$('#form').value=p.form;$('#draft').value=p.body;
-  // Reopen in the state it was saved: guidance on iff the body
-  // still carries `›` guide lines.
-  guidanceOn = draftHasGuides(); stashedGuides=[];
+  currentId=id;$('#title').value=p.title;$('#form').value=p.form;
+  // Migration: an older saved body may contain `›` guide lines; strip
+  // them so they don't show as text. Then show guidance for any form
+  // that has it (panel only — no in-text lines).
+  $('#draft').value=cleanDraft(p.body);
+  const fv=FORMS[p.form];
+  guidanceOn = !!(fv && fv.guidance);
   if(guidanceOn){ renderGuide(p.form); }
   else { $('#guide').style.display='none'; }
   syncGuidanceBtn();
@@ -612,6 +612,10 @@ function renderGuide(key){
   if(!v||!v.guidance){box.style.display='none';box.innerHTML='';return;}
   const g=v.guidance;
   const tips=(g.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
+  const hintList=(g.line_hints&&g.line_hints.length)
+    ? `<p class="ghints-h">Per line</p><ol class="ghints">`+
+      g.line_hints.map(h=>`<li>${esc(h)}</li>`).join('')+`</ol>`
+    : '';
   box.innerHTML=
     `<h3>${esc(v.name)}</h3>`+
     `<p class="gstruct">${esc(g.structure||'')}</p>`+
@@ -619,28 +623,25 @@ function renderGuide(key){
     `<span>Rhyme: ${esc(v.rhyme)}</span></div>`+
     (tips?`<ul class="gtips">${tips}</ul>`:'')+
     (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
-    (v.guidance.line_hints?`<button class="btn ghost gclear" onclick="setGuidance(false)">Clear guide lines</button>`:'');
+    hintList;
   box.style.display='block';
 }
 
 function useForm(key){
   const v=FORMS[key];if(!v){return;}
   $('#form').value=key;
-  // Pre-fill the draft with one guide line per line: the marker, the rhyme
-  // letter / role, so the box is never a cold blank. These are stripped from
-  // scansion and from the saved poem (see cleanDraft).
-  const hints=(v.guidance&&v.guidance.line_hints)||
-              Array(v.lines).fill('');
-  $('#draft').value=hints.map(h=>GUIDE+h).join('\n');
+  // The editor starts EMPTY — per-line hints live in the guidance panel,
+  // never in the editable text (so nothing to type over, and scansion is
+  // always of your real words). Guidance panel is shown by default.
+  $('#draft').value='';
   currentId=null;$('#title').value='';
-  guidanceOn=true;stashedGuides=[];syncGuidanceBtn();
+  guidanceOn=true;syncGuidanceBtn();
   renderGuide(key);
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
   $('nav.tabs button[data-tab=write]').classList.add('on');$('#write').classList.add('on');
-  // place the cursor at the start of the first guide line
   const ta=$('#draft');ta.focus();ta.setSelectionRange(0,0);
-  scan();toast('Form loaded — '+v.lines+' lines, with guidance');
+  scan();toast('Form loaded — '+v.lines+' lines; guidance on the right');
 }
 
 // Remove all guide lines, leaving real content (and blank lines) in place.
