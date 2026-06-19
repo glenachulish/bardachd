@@ -101,12 +101,17 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 .guide ol.ghints{margin:10px 0 0;padding-left:22px;font-size:12.5px;color:var(--ink-soft)}
 .guide ol.ghints li{margin-bottom:4px;line-height:1.4}
 .guide .ghints-h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 0}
-/* BARDACHD_PATCH_LAYOUT_FORMNAME_v1: guidance relocated below the editor, full width */
+/* BARDACHD_PATCH_LAYOUT_FORMNAME_v1 + BARDACHD_PATCH_GUIDANCE_SPLIT_v1 */
 .guide.guide-below{margin-top:22px;margin-bottom:0}
+/* prose guidance flows in two columns on wide screens for compactness */
 @media(min-width:680px){
-  .guide.guide-below ol.ghints{columns:2;column-gap:28px}
-  .guide.guide-below ol.ghints li{break-inside:avoid}
+  .guide.guide-below{column-count:2;column-gap:32px}
+  .guide.guide-below h3,.guide.guide-below .gstarter{break-inside:avoid}
+  .guide.guide-below ul.gtips{break-inside:avoid}
 }
+/* per-line hints in the right column, beside the text box */
+.guide.guide-hints{margin-top:0;margin-bottom:14px}
+.guide.guide-hints ol.ghints{margin-top:6px}
 .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.04em;
   padding:2px 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
 .badge.good{background:#e3efe2;color:#2f6b3a}
@@ -228,6 +233,8 @@ Shall I compare thee to a summer's day"></textarea>
         </div>
       </div>
       <div>
+        <!-- BARDACHD_PATCH_GUIDANCE_SPLIT_v1: per-line hints sit here, beside the text box -->
+        <div class="guide guide-hints" id="guidehints" style="display:none"></div>
         <div class="legend">Stress map &nbsp;
           <span class="stress">●</span> stressed &nbsp;
           <span class="unstress">●</span> unstressed
@@ -379,7 +386,7 @@ function syncGuidanceBtn(){}       // no-op (button removed); kept for callers
 function setGuidance(on){
   guidanceOn = on;
   if(on){ renderGuide($('#form').value); }
-  else  { $('#guide').style.display='none'; }
+  else  { hideGuide(); }
 }
 
 async function scan(){
@@ -586,7 +593,7 @@ async function openPoem(id){
   const fv=FORMS[p.form];
   guidanceOn = !!(fv && fv.guidance);
   if(guidanceOn){ renderGuide(p.form); }
-  else { $('#guide').style.display='none'; }
+  else { hideGuide(); }
   syncGuidanceBtn();
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   $$('.panel').forEach(x=>x.classList.remove('on'));
@@ -615,25 +622,34 @@ async function loadForms(){
 }
 
 // Render the guide panel for a form key (or hide it for free verse / unknown).
+// BARDACHD_PATCH_GUIDANCE_SPLIT_v1: prose guidance renders below the editor (#guide);
+// the per-line hints render in the right column (#guidehints).
+function hideGuide(){
+  const a=$('#guide'), b=$('#guidehints');
+  if(a){a.style.display='none';a.innerHTML='';}
+  if(b){b.style.display='none';b.innerHTML='';}
+}
 function renderGuide(key){
-  const box=$('#guide');
+  const prose=$('#guide'), hints=$('#guidehints');
   const v=FORMS[key];
-  if(!v||!v.guidance){box.style.display='none';box.innerHTML='';return;}
+  if(!v||!v.guidance){hideGuide();return;}
   const g=v.guidance;
   const tips=(g.tips||[]).map(t=>`<li>${esc(t)}</li>`).join('');
-  const hintList=(g.line_hints&&g.line_hints.length)
-    ? `<p class="ghints-h">Per line</p><ol class="ghints">`+
-      g.line_hints.map(h=>`<li>${esc(h)}</li>`).join('')+`</ol>`
-    : '';
-  box.innerHTML=
+  // Prose half (below the editor)
+  prose.innerHTML=
     `<h3>${esc(v.name)}</h3>`+
     `<p class="gstruct">${esc(g.structure||'')}</p>`+
     `<div class="gmeta"><span>Metre: ${esc(v.metre)}</span>`+
     `<span>Rhyme: ${esc(v.rhyme)}</span></div>`+
     (tips?`<ul class="gtips">${tips}</ul>`:'')+
-    (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'')+
-    hintList;
-  box.style.display='block';
+    (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'');
+  prose.style.display='block';
+  // Per-line hints half (right column)
+  if(g.line_hints&&g.line_hints.length){
+    hints.innerHTML=`<p class="ghints-h">Per line</p><ol class="ghints">`+
+      g.line_hints.map(h=>`<li>${esc(h)}</li>`).join('')+`</ol>`;
+    hints.style.display='block';
+  } else { hints.style.display='none'; hints.innerHTML=''; }
 }
 
 function useForm(key){
