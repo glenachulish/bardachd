@@ -215,7 +215,7 @@ Shall I compare thee to a summer's day"></textarea>
         <div class="toolbar">
           <button class="btn" id="save">Save poem</button>
           <button class="btn ghost" id="newp">New</button>
-          <button class="btn ghost" id="guidancetoggle">Clear guidance</button>
+          <button class="btn ghost" id="detectform">Detect form</button>
           <button class="btn ghost" id="export">Export .txt</button>
           <button class="btn ghost" id="exportpdf">Export PDF</button>
           <button class="btn ghost" id="print">Print</button>
@@ -366,49 +366,14 @@ function cleanDraft(text){
   return text.split('\n').map(ln => ln.startsWith(GUIDE) ? '' : ln).join('\n');
 }
 function draftHasGuides(){return $('#draft').value.split('\n').some(l=>l.startsWith(GUIDE));}
-// ---- BARDACHD_PATCH_GUIDANCE_TOGGLE_v1: guidance as a single toggle ----
-// guidanceOn is the one source of truth: when true the panel shows and
-// the `›` guide-line skeleton stays in the draft; save/print/export all
-// follow it. stashedGuides keeps the most recent skeleton so 'Show'
-// can restore guide lines onto still-blank lines without clobbering
-// anything you've actually written.
-let guidanceOn = true;
-let stashedGuides = [];   // array of {i, text} for stripped guide lines
-function syncGuidanceBtn(){
-  const b=$('#guidancetoggle'); if(!b) return;
-  b.textContent = guidanceOn ? 'Clear guidance' : 'Show guidance';
-}
-// Strip guide lines out of the draft, remembering them so we can restore.
-function stripGuideLines(){
-  const lines=$('#draft').value.split('\n');
-  stashedGuides=[];
-  const kept=lines.map((l,i)=>{
-    if(l.startsWith(GUIDE)){ stashedGuides.push({i, text:l}); return ''; }
-    return l;
-  });
-  $('#draft').value=kept.join('\n');
-}
-// Put guide lines back, but only onto lines that are still blank, so a
-// line you wrote over is never overwritten.
-function restoreGuideLines(){
-  if(!stashedGuides.length) return;
-  const lines=$('#draft').value.split('\n');
-  stashedGuides.forEach(({i,text})=>{
-    if(i<lines.length){ if(lines[i].trim()==='') lines[i]=text; }
-    else { while(lines.length<i) lines.push(''); lines.push(text); }
-  });
-  $('#draft').value=lines.join('\n');
-  stashedGuides=[];
-}
+// BARDACHD_PATCH_DETECT_UI_v1: guidance panel shows/hides automatically; no toggle.
+let guidanceOn = true;            // internal: is the panel meant to show?
+function syncGuidanceBtn(){}       // no-op (button removed); kept for callers
 function setGuidance(on){
   guidanceOn = on;
-  // Per-line hints now live in the panel, so the toggle simply shows or
-  // hides the panel. No in-text guide lines to strip/restore anymore.
   if(on){ renderGuide($('#form').value); }
   else  { $('#guide').style.display='none'; }
-  syncGuidanceBtn();
 }
-$('#guidancetoggle').onclick=()=>setGuidance(!guidanceOn);
 
 async function scan(){
   const raw=$('#draft').value;
@@ -558,12 +523,44 @@ function printablePoem(){
 }
 $('#print').onclick=()=>{const w=printablePoem();if(w){w.focus();setTimeout(()=>w.print(),250);}};
 $('#exportpdf').onclick=()=>{const w=printablePoem();if(w){w.focus();setTimeout(()=>w.print(),250);}toast('Choose "Save as PDF" in the dialog');};
+// BARDACHD_PATCH_DETECT_UI_v1: form detection (suggests; the dropdown stays authoritative)
+async function detectFormFor(text){
+  const r=await fetch(API+'api/detect-form',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({body:text})});
+  return r.json();
+}
+function applyDetectedForm(d){
+  // Set the dropdown to the suggestion; user can change it freely.
+  const sel=$('#form');
+  if([...sel.options].some(o=>o.value===d.form)){ sel.value=d.form; }
+  renderGuide(sel.value); guidanceOn = (sel.value!=='free'); scan();
+}
+$('#detectform').onclick=async()=>{
+  const text=cleanDraft($('#draft').value).trim();
+  if(!text){toast('Write or open a poem first');return;}
+  const d=await detectFormFor(text);
+  if(d.form==='free'){ toast('Closest match: free verse ('+d.confidence+' confidence)'); }
+  else { applyDetectedForm(d); toast('Suggested: '+d.name+' — '+d.confidence+' confidence. Change it in the dropdown if you disagree.'); }
+};
+// Detect on a saved poem, then open it with the suggested form set.
+async function detectSaved(id){
+  const r=await fetch(API+'api/poems/'+id);const p=await r.json();
+  const d=await detectFormFor(cleanDraft(p.body));
+  await openPoem(id);
+  if(d.form!=='free' && [...$('#form').options].some(o=>o.value===d.form)){
+    applyDetectedForm(d);
+    toast('Suggested: '+d.name+' — '+d.confidence+'. Save to keep it, or change the dropdown.');
+  } else {
+    toast('Closest match: free verse ('+d.confidence+' confidence)');
+  }
+}
 async function loadPoems(){
   const r=await fetch(API+'api/poems');const list=await r.json();
   $('#poemlist').innerHTML=list.length?list.map(p=>
     `<div class="poemrow"><div><div class="t">${esc(p.title)}</div>`+
     `<div class="m">${esc(p.form)} · ${p.updated}</div></div>`+
     `<div class="acts"><button class="btn ghost" onclick="openPoem(${p.id})">Open</button>`+
+    `<button class="btn ghost" onclick="detectSaved(${p.id})">Detect form</button>`+
     `<button class="btn ghost" onclick="delPoem(${p.id})">Delete</button></div></div>`
   ).join(''):'<p class="empty">No poems yet.</p>';
 }

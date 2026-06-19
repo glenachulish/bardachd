@@ -300,6 +300,8 @@ def target_lines(form_key):
         "limerick": [anap3, anap3, anap2, anap2, anap3],
         "couplet-heroic": [iamb5, iamb5],
         "quatrain": [iamb4, iamb4, iamb4, iamb4],
+        # BARDACHD_PATCH_TRIOLET_DETECT_v1
+        "triolet": [iamb4] * 8,
         # ADDFORMS_2026 — iambic-pentameter forms added below
         "ottava-rima": [iamb5] * 8,
         "rhyme-royal": [iamb5] * 7,
@@ -345,6 +347,15 @@ FORMS = {
         "rhyme": "ABCB (or ABAB)",
         "rhyme_scheme": list("ABCB"),
         "note": "The common metre of hymns and folk song. Repeat the stanza as needed.",
+    },
+    # BARDACHD_PATCH_TRIOLET_DETECT_v1
+    "triolet": {
+        "name": "Triolet",
+        "lines": 8,
+        "metre": "usually iambic tetrameter",
+        "rhyme": "ABaAabAB; line 1 returns as 4 and 7, line 2 returns as 8",
+        "rhyme_scheme": ["A1","B1","a","A1","a","b","A1","B1"],
+        "note": "Eight lines on two rhymes with two refrains. Line 1 recurs as lines 4 and 7; line 2 recurs as line 8.",
     },
     "haiku": {
         "name": "Haiku",
@@ -487,6 +498,24 @@ FORM_GUIDANCE = {
             "a", "b", "A1 — refrain 1 returns",
             "a", "b", "A2 — refrain 2 returns",
             "a", "b", "A1 — refrain 1", "A2 — refrain 2",
+        ],
+    },
+    # BARDACHD_PATCH_TRIOLET_DETECT_v1
+    "triolet": {
+        "structure": "8 lines, two rhymes (a and b), two refrains. Line 1 (A) returns as lines 4 and 7; line 2 (B) returns as line 8. "
+                     "Rhyme: ABaAabAB.",
+        "tips": [
+            "Write lines 1 and 2 first — they are your two refrains and between them they fill five of the eight lines, so make them strong and a little open.",
+            "Only lines 3, 5 and 6 are new: line 3 and 5 rhyme with line 1 (a), line 6 rhymes with line 2 (b). Everything else is a refrain.",
+            "Aim for refrains that can shift in sense as the poem turns around them — the pleasure of a triolet is the same words landing differently.",
+            "Iambic tetrameter (da-DUM ×4) is the usual measure; keep the two refrains the same length so they recur cleanly.",
+        ],
+        "starter": "Draft one memorable line for A (returns three times) and one for B (returns twice); the three new lines simply carry them back around.",
+        "line_hints": [
+            "A — REFRAIN A (line 1; write first)", "B — REFRAIN B (line 2; write first)",
+            "a — new, rhymes with A", "A — refrain A returns (= line 1)",
+            "a — new, rhymes with A", "b — new, rhymes with B",
+            "A — refrain A returns (= line 1)", "B — refrain B returns (= line 2)",
         ],
     },
     "ballad": {
@@ -1032,6 +1061,152 @@ def api_export_poem(pid: int):
         d = dict(row)
     text = f"{d['title']}\n{'=' * len(d['title'])}\n\n{d['body']}\n\n— form: {d['form']}\n"
     return {"filename": f"{d['title']}.txt", "content": text}
+
+
+# --------------------------------------------------------------------------
+# BARDACHD_PATCH_TRIOLET_DETECT_v1: form detection for existing poems
+# --------------------------------------------------------------------------
+def _rhyme_signature(lines):
+    """Map each non-blank line to a rhyme-class letter based on its last
+    word's rhyming part. Lines that don't rhyme with anything earlier get
+    a fresh letter. Unknown words get their own class."""
+    import string
+    classes = []          # list of rhyming_part strings, index = class id
+    sig = []
+    for ln in lines:
+        words = re.findall(r"[A-Za-z']+", ln)
+        if not words:
+            continue
+        last = re.sub(r"[^a-z']", "", words[-1].lower())
+        phones = pronouncing.phones_for_word(last) if last else []
+        part = pronouncing.rhyming_part(phones[0]) if phones else None
+        cid = None
+        if part is not None:
+            for i, p in enumerate(classes):
+                if p == part:
+                    cid = i
+                    break
+        if cid is None:
+            cid = len(classes)
+            classes.append(part if part is not None else object())
+        sig.append(cid)
+    return sig
+
+def _scheme_to_ids(scheme):
+    """Normalise a form's rhyme_scheme (e.g. ['A1','b','A2',...] or
+    list('ABCB')) to integer classes by base letter, refrains included."""
+    ids = []
+    seen = {}
+    for tok in scheme:
+        key = tok[0].lower()  # base rhyme letter; A1/A2 share 'a'
+        if key not in seen:
+            seen[key] = len(seen)
+        ids.append(seen[key])
+    return ids
+
+def _sig_similarity(a, b):
+    """Fraction of line-pairs whose 'same-rhyme-or-not' relation agrees
+    between two equal-length signatures. Order-independent of letter names."""
+    n = len(a)
+    if n < 2:
+        return 0.0
+    agree = 0
+    total = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            total += 1
+            if (a[i] == a[j]) == (b[i] == b[j]):
+                agree += 1
+    return agree / total if total else 0.0
+
+def detect_form(body):
+    """Score the poem against every form; return best guess + confidence."""
+    lines = [ln for ln in body.splitlines() if ln.strip()]
+    n = len(lines)
+    if n < 2:
+        return {"form": "free", "name": "Free verse", "confidence": "low",
+                "score": 0.0, "reason": "Too short to match a fixed form."}
+    poem_sig = _rhyme_signature(lines)
+    syl_counts = [scan_line(ln)["syllable_count"] for ln in lines]
+
+    # Rhyme density: fraction of lines that actually share a rhyme class
+    # with at least one other line. Near zero ⇒ the poem doesn't really
+    # rhyme, so we must not reward it for incidentally agreeing with a
+    # rhymed scheme's 'these two lines DON'T rhyme' relations.
+    from collections import Counter
+    counts = Counter(poem_sig)
+    rhymed_lines = sum(1 for cid in poem_sig if counts[cid] >= 2)
+    rhyme_density = rhymed_lines / len(poem_sig) if poem_sig else 0.0
+
+    best = None
+    for key, v in FORMS.items():
+        flines = v.get("lines")
+        scheme = v.get("rhyme_scheme")
+        # An unrhymed form (e.g. blank verse) has all-distinct scheme
+        # letters, so it expects no rhyming pairs.
+        unrhymed_form = bool(scheme) and len(set(s[0].lower() for s in scheme)) == len(scheme)
+        # ---- line-count score (strong) -------------------------------
+        if not flines:
+            lc = 0.0
+        elif n == flines:
+            lc = 1.0
+        elif flines and n % flines == 0:
+            lc = 0.7   # whole number of stanzas (e.g. repeated quatrains)
+        else:
+            lc = max(0.0, 1.0 - abs(n - flines) / max(flines, n))
+        # ---- rhyme score (strong) ------------------------------------
+        rs = 0.0
+        if scheme and len(scheme) == n:
+            rs = _sig_similarity(poem_sig, _scheme_to_ids(scheme))
+        elif scheme and flines and n % flines == 0:
+            # compare stanza-by-stanza against the repeating unit
+            unit = _scheme_to_ids(scheme)
+            parts = []
+            for s in range(0, n, flines):
+                parts.append(_sig_similarity(poem_sig[s:s + flines], unit))
+            rs = sum(parts) / len(parts) if parts else 0.0
+        # A poem that essentially doesn't rhyme should not score well
+        # against a RHYMED form; fade rhyme credit toward zero. Unrhymed
+        # forms (blank verse) are unaffected.
+        if not unrhymed_form and rhyme_density < 0.34:
+            rs *= rhyme_density / 0.34
+        # ---- metre score (soft tiebreaker) ---------------------------
+        tgt = target_lines(key)
+        ms = 0.0
+        if tgt and len(tgt) == n:
+            agree = 0
+            for got, want in zip(syl_counts, (len(t) for t in tgt)):
+                if got == want:
+                    agree += 1
+            ms = agree / n
+        # ---- weighted total ------------------------------------------
+        score = 0.45 * lc + 0.45 * rs + 0.10 * ms
+        if best is None or score > best["score"]:
+            best = {"form": key, "name": v.get("name", key),
+                    "score": round(score, 3), "lc": lc, "rs": rs, "ms": ms}
+
+    if not best or best["score"] < 0.55:
+        return {"form": "free", "name": "Free verse",
+                "confidence": "low", "score": round(best["score"], 3) if best else 0.0,
+                "reason": "No fixed form fits closely — reads as free verse."}
+    band = "high" if best["score"] >= 0.8 else "medium" if best["score"] >= 0.65 else "low"
+    bits = []
+    bits.append("line count matches" if best["lc"] >= 0.99 else
+                ("line count is a multiple" if best["lc"] >= 0.7 else "line count is close"))
+    if best["rs"] >= 0.85:
+        bits.append("rhyme pattern fits well")
+    elif best["rs"] >= 0.6:
+        bits.append("rhyme pattern roughly fits")
+    reason = "; ".join(bits) + "." if bits else "closest overall match."
+    return {"form": best["form"], "name": best["name"],
+            "confidence": band, "score": best["score"], "reason": reason}
+
+class DetectRequest(BaseModel):
+    body: str
+
+@app.post("/api/detect-form")
+def api_detect_form(req: DetectRequest):
+    return detect_form(req.body or "")
 
 
 from frontend import HTML
