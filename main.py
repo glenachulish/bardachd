@@ -1209,6 +1209,7 @@ def api_detect_form(req: DetectRequest):
     return detect_form(req.body or "")
 
 
+import hashlib
 from frontend import HTML
 
 
@@ -1263,8 +1264,13 @@ _ICON_MASKABLE_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512
 
 # Service worker: caches the app shell so it opens offline and feels app-like.
 # Network-first for API calls (so data stays fresh), cache-first for the shell.
-_SW_JS = """const CACHE='bardachd-v1';
+# BARDACHD_PATCH_SW_AUTOUPDATE_v1: cache name tracks a content hash of the shell, so each
+# deploy invalidates the old cache; the shell is served network-first so
+# updates arrive on next launch instead of being pinned.
+_SHELL_HASH = hashlib.sha1(HTML.encode('utf-8')).hexdigest()[:8]
+_SW_JS = "const CACHE='bardachd-" + _SHELL_HASH + "';\n" + """
 const SHELL=['./','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png'];
+const SHELL_PATHS=new Set(['', '/', 'index.html']);
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
@@ -1281,7 +1287,21 @@ self.addEventListener('fetch',e=>{
     e.respondWith(fetch(req).catch(()=>caches.match(req)));
     return;
   }
-  // Shell/assets: cache-first, update cache in the background.
+  // App shell (the HTML/JS document): NETWORK-FIRST so a deploy shows up
+  // on next launch. Fall back to cache when offline.
+  const isShell = req.mode==='navigate' ||
+    url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+  if(isShell){
+    e.respondWith(
+      fetch(req).then(res=>{
+        const copy=res.clone();
+        caches.open(CACHE).then(c=>c.put(req,copy));
+        return res;
+      }).catch(()=>caches.match(req).then(h=>h||caches.match('./')))
+    );
+    return;
+  }
+  // Other assets (icons, manifest): cache-first, refresh in background.
   e.respondWith(caches.match(req).then(hit=>hit||fetch(req).then(res=>{
     const copy=res.clone();
     caches.open(CACHE).then(c=>c.put(req,copy));
