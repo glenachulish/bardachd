@@ -101,6 +101,12 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 .guide ol.ghints{margin:10px 0 0;padding-left:22px;font-size:12.5px;color:var(--ink-soft)}
 .guide ol.ghints li{margin-bottom:4px;line-height:1.4}
 .guide .ghints-h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 0}
+/* BARDACHD_PATCH_LAYOUT_FORMNAME_v1: guidance relocated below the editor, full width */
+.guide.guide-below{margin-top:22px;margin-bottom:0}
+@media(min-width:680px){
+  .guide.guide-below ol.ghints{columns:2;column-gap:28px}
+  .guide.guide-below ol.ghints li{break-inside:avoid}
+}
 .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.04em;
   padding:2px 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
 .badge.good{background:#e3efe2;color:#2f6b3a}
@@ -222,7 +228,6 @@ Shall I compare thee to a summer's day"></textarea>
         </div>
       </div>
       <div>
-        <div class="guide" id="guide" style="display:none"></div>
         <div class="legend">Stress map &nbsp;
           <span class="stress">●</span> stressed &nbsp;
           <span class="unstress">●</span> unstressed
@@ -232,6 +237,8 @@ Shall I compare thee to a summer's day"></textarea>
         <div class="scan" id="scan"><p class="empty">Lines appear here as you type.</p></div>
       </div>
     </div>
+    <!-- BARDACHD_PATCH_LAYOUT_FORMNAME_v1: guidance now sits full-width below the editor -->
+    <div class="guide guide-below" id="guide" style="display:none"></div>
   </section>
 
   <!-- FORMS -->
@@ -554,11 +561,16 @@ async function detectSaved(id){
     toast('Closest match: free verse ('+d.confidence+' confidence)');
   }
 }
+// BARDACHD_PATCH_LAYOUT_FORMNAME_v1: show a poem's form by its friendly name.
+function formLabel(key){
+  if(!key || key==='free') return 'Free verse';
+  return (FORMS[key] && FORMS[key].name) ? FORMS[key].name : key;
+}
 async function loadPoems(){
   const r=await fetch(API+'api/poems');const list=await r.json();
   $('#poemlist').innerHTML=list.length?list.map(p=>
     `<div class="poemrow"><div><div class="t">${esc(p.title)}</div>`+
-    `<div class="m">${esc(p.form)} · ${p.updated}</div></div>`+
+    `<div class="m">${esc(formLabel(p.form))} · ${p.updated}</div></div>`+
     `<div class="acts"><button class="btn ghost" onclick="openPoem(${p.id})">Open</button>`+
     `<button class="btn ghost" onclick="detectSaved(${p.id})">Detect form</button>`+
     `<button class="btn ghost" onclick="delPoem(${p.id})">Delete</button></div></div>`
