@@ -522,9 +522,9 @@ FORM_GUIDANCE = {
         "structure": "4-line stanza (repeat as many as you like): tetrameter, "
                      "trimeter, tetrameter, trimeter.",
         "tips": [
-            "The long/short alternation (8 beats, 6 beats) is the 'common "
-            "metre' of hymns and folk song — read it aloud and you'll feel the "
-            "swing.",
+            "The long/short alternation — 4 beats (8 syllables) then 3 beats "
+            "(6 syllables) — is the 'common metre' of hymns and folk song; "
+            "read it aloud and you'll feel the swing.",
             "Only lines 2 and 4 need to rhyme (ABCB); that looseness keeps a "
             "narrative moving.",
             "Ballads tell a story — let each stanza advance the action a step.",
@@ -906,6 +906,25 @@ def api_syllables(word: str):
     return {"word": word, "syllables": n}
 
 
+# BARDACHD_PATCH_LINE_TARGETS_v1: per-line beats+syllables for the editor labels.
+def _line_targets(key):
+    """One {'beats','syllables'} per line. From the metrical target where
+    there is one; from syllable_pattern (beats=None) for syllable-counted
+    forms like haiku; empty when the form has no fixed line shape."""
+    tgt = target_lines(key)
+    if tgt:
+        res = []
+        for s in tgt:
+            if s is None:
+                res.append({"beats": None, "syllables": None})
+            else:
+                res.append({"beats": s.count("1"), "syllables": len(s)})
+        return res
+    pat = FORMS.get(key, {}).get("syllable_pattern")
+    if pat:
+        return [{"beats": None, "syllables": int(n)} for n in pat]
+    return []
+
 @app.get("/api/forms")
 def api_forms():
     # Merge in guidance (structure, tips, starter prompt, per-line hints) so
@@ -915,6 +934,7 @@ def api_forms():
         item = dict(v)
         if k in FORM_GUIDANCE:
             item["guidance"] = FORM_GUIDANCE[k]
+        item["line_targets"] = _line_targets(k)
         out[k] = item
     return out
 

@@ -112,6 +112,9 @@ textarea#draft:focus{outline:none;border-color:var(--accent)}
 /* per-line hints in the right column, beside the text box */
 .guide.guide-hints{margin-top:0;margin-bottom:14px}
 .guide.guide-hints ol.ghints{margin-top:6px}
+/* BARDACHD_PATCH_HINT_BEATS_v1 */
+.guide .ghints .lt{color:var(--accent-warm,#9a5b3b);white-space:nowrap}
+.guide .ltnote{font-size:11.5px;line-height:1.45;color:var(--ink-soft);margin:6px 0 2px}
 .badge{font-family:ui-sans-serif,system-ui,sans-serif;font-size:10px;letter-spacing:.04em;
   padding:2px 7px;border-radius:10px;margin-left:6px;white-space:nowrap}
 .badge.good{background:#e3efe2;color:#2f6b3a}
@@ -644,10 +647,38 @@ function renderGuide(key){
     (tips?`<ul class="gtips">${tips}</ul>`:'')+
     (g.starter?`<p class="gstarter"><b>Starter:</b> ${esc(g.starter)}</p>`:'');
   prose.style.display='block';
-  // Per-line hints half (right column)
+  // BARDACHD_PATCH_HINT_BEATS_v1: per-line hints, each labelled with beats+syllables.
   if(g.line_hints&&g.line_hints.length){
-    hints.innerHTML=`<p class="ghints-h">Per line</p><ol class="ghints">`+
-      g.line_hints.map(h=>`<li>${esc(h)}</li>`).join('')+`</ol>`;
+    const lt=v.line_targets||[];
+    // Does any line in this form have a fixed beat count? (haiku: no)
+    const anyBeats=lt.some(x=>x&&x.beats!=null);
+    const items=g.line_hints.map((h,i)=>{
+      const t=lt[i];
+      // Strip any count already baked into the hint text (e.g. '(4 beats)'
+      // or a bare '5 syllables') so we don't double-state it.
+      let label=h.replace(/\s*\(\d+\s*beats?\)\s*/i,'')
+                 .replace(/^\s*\d+\s*syllables?\s*$/i,'')
+                 .replace(/\s*[—-]\s*$/,'').trim();
+      let tag='';
+      if(t){
+        if(t.beats!=null && t.syllables!=null){
+          tag=`<span class="lt">${t.beats} beats · ${t.syllables} syllables</span>`;
+        } else if(t.syllables!=null){
+          tag=`<span class="lt">${t.syllables} syllables</span>`;
+        }
+      }
+      // Join label and tag with a separator only when both are present.
+      const body = (label && tag) ? `${esc(label)} · ${tag}`
+                 : (tag ? tag : esc(label));
+      return `<li>${body}</li>`;
+    }).join('');
+    // One-line explainer, tailored to whether beats apply.
+    const explain = anyBeats
+      ? `A <b>beat</b> is one stressed pulse. In iambic metre each beat = 2 syllables; in anapaestic metre (the limerick) each beat = 3.`
+      : `This form counts <b>syllables</b> per line rather than beats.`;
+    hints.innerHTML=`<p class="ghints-h">Per line</p>`+
+      `<p class="ltnote">${explain}</p>`+
+      `<ol class="ghints">${items}</ol>`;
     hints.style.display='block';
   } else { hints.style.display='none'; hints.innerHTML=''; }
 }
